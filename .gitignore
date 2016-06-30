@@ -1,0 +1,10 @@
+# exclude everything except ...
+/*
+!.gitignore
+!.bashrc
+!.emacs
+!.gitconfig
+!/bin/
+!/bin/*
+
+
