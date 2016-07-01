@@ -1,0 +1,12 @@
+#
+# vagrant
+#
+vagrant box add --provider virtualbox puppetlabs/centos-7.2-64-nocm
+vagrant box add --provider virtualbox puppetlabs/debian-8.2-64-nocm
+vagrant box add --provider virtualbox puppetlabs/ubuntu-16.04-64-nocm
+vagrant box list
+vagrant up [IMAGE]
+vagrant ssh [IMAGE]
+vagrant list
+vagrant suspend
+vagrant resume

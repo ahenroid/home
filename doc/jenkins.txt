@@ -1,0 +1,25 @@
+# cd [puppet|facter]
+# git checkout -b [BRANCH]
+## Make changes
+# git add -A
+# git commit
+# git push origin [BRANCH]
+
+# cd puppet-agent
+# git checkout -b [BRANCH]
+# emacs configs/components/[puppet|facter].json # add repo & SHA
+# git add -A
+# git commit
+# git push origin [BRANCH]
+
+# Goto jenkins.puppetlabs.com
+# login: PuppetPass (user=andy.henroid)
+# puppet-agent
+# ad_hoc
+# Pipeline Step 1
+# Build with Parameters
+  # TEST_TARGETS = redhat7-64a
+  # GITHUB_USER = ahenroid
+  # GITHUB_REF = [BRANCH]
+  # Hit "Build"
+  

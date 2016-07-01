@@ -1,0 +1,12 @@
+#
+# floaty
+#
+gem install vmfloaty
+floaty help
+floaty token get --user andy.henroid --url https://vmpooler.delivery.puppetlabs.net/api/v1 # add token to ~/.vmfloaty.yml
+floaty list [centos|debian|fedora|oracle|osx|redhat|sles|solaris|ubuntu|win]
+floaty get [PLATFORM]
+  # {"fedora-23-x86_64":"HOST","domain":"delivery.puppetlabs.net"}
+ssh root@HOST.delivery.puppetlabs.net
+floaty query HOST
+floaty delete HOST

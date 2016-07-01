@@ -6,5 +6,6 @@
 !.gitconfig
 !/bin/
 !/bin/*
-
+!/doc/
+!/doc/*
 

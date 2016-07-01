@@ -1,0 +1,73 @@
+#
+# Branch & push (branch naming, e.g. pup-6004/master/modify_gid_fix)
+#
+git checkout -b [BRANCH]
+## modify files
+git add -A
+git commit
+git push origin [BRANCH]
+#git commit --amend
+#git push origin [BRANCH] -f
+## GitHub: Compare & pull request
+
+#
+# Fork & clone
+#
+## GitHub: Fork
+git clone https://github.com/ahenroid/[PROJ]
+cd [PROJ]
+git remote add upstream https://github.com/puppetlabs/[PROJ]
+## vs. "git remote rename origin upstream"
+git remote -v
+
+#
+# Update fork
+#
+git clone https://github.com/ahenroid/[PROJ]
+git remote add upstream https://github.com/puppetlabs/[PROJ]
+git fetch upstream
+git checkout master
+git merge upstream/master
+git push origin master
+## git push origin master
+
+#
+# Output
+#
+git log --oneline
+git branch
+
+#
+# Configuration
+#
+git config --global user.name="Andy Henroid"
+git config --global user.email="andy.henroid@puppet.com"
+git config --global github.user="ahenroid"
+##git config --global credential.helper osxkeychain
+
+#
+# Tag & revert
+#
+git tag -a v1.0 -m "Stable version"
+  # add, commit, ...
+git checkout v1.0
+git checkout master; git revert [COMMITID]
+
+#
+# Revert after commit
+#
+git reset --hard # roll back to last commit
+git clean -f # remove all untracked files
+
+#
+# Branch & merge
+#
+git checkout master
+git merge [BRANCH]
+git branch -d [BRANCH]
+
+#
+# Misc.
+#
+git commit --amend
+git remote set-url origin git@github.com:ahenroid/puppet-agent.git

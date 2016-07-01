@@ -1,0 +1,8 @@
+#
+# rbenv
+#
+bundle install
+export RUBY_CONFIGURE_OPTS="--enable-shared"
+rbenv install [VERSION] # e.g. 2.1.10
+rbenv global [VERSION]
+ruby -v

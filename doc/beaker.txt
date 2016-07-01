@@ -1,0 +1,9 @@
+#
+# beaker
+#
+cd acceptance/
+bundle install
+# SHA from builds.puppetlabs.lan/puppet-agent/[LATEST]/artifacts/...
+bundle exec rake ci:test:aio SHA=[SHA|VERSION] [SUITE_COMMIT=1.5.2.171.g42378e6] TEST_TARGET=[redhat7-64a|ubuntu1404-64a] TEST=tests/.../[TEST].rb OPTIONS='--preserve-hosts=always'
+cp log/latest/hosts_preserved.yml .
+bundle exec beaker --hosts=hosts_preserved.yml --tests=tests/.../[TEST].rb
