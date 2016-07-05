@@ -16,7 +16,6 @@
 ;(transient-mark-mode 1) ;; No region when it is not highlighted
 ;(setq cua-keep-region-after-copy t) ;; Standard Windows behaviour
 
-(setq indent-tabs-mode nil) 
 (setq auto-mode-alist (mapcar 'purecopy
 			      '(("\\.rb$" . ruby-mode)
 				("\\.c$" . c++-mode)
@@ -30,12 +29,14 @@
 
 (add-hook 'ruby-mode-hook
 	  '(lambda ()
+	     (setq indent-tabs-mode nil) 
 	     (setq ruby-indent-level 2)))
 
 (add-hook 'c++-mode-hook
 	  '(lambda ()
-	     (setq c-basic-offset 4
-		   c-comment-only-line-offset 0)
+	     (setq indent-tabs-mode nil) 
+	     (setq c-basic-offset 4)
+	     (setq c-comment-only-line-offset 0)
 	     (c-set-offset 'innamespace [4])
 	     (c-set-offset 'statement-block-intro '+)
 	     (c-set-offset 'substatement-open 0)
