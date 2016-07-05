@@ -15,8 +15,8 @@ else
     PKG+="libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev "
     PKG+="libcurl4-openssl-dev ruby-dev "
     PKG+="emacs-nox "
-    #apt-get -qqy update
-    #apt-get -qqy install $PKG
+    apt-get -qqy update
+    apt-get -qqy install $PKG
 fi
 
 # create proj/ directory
