@@ -2,13 +2,18 @@
 
 # update packages
 if [ -f /etc/redhat-release ]; then
-    # Fedora, Redhat?
-    PKG+="gcc-c++ cmake git "
+    # Fedora, Redhat
+    PKG+="gcc-c++ cmake git wget "
     PKG+="openssl-devel readline-devel zlib-devel "
     PKG+="boost-devel libcurl-devel yaml-cpp-devel "
     PKG+="emacs-nox "
-    dnf -qy update
-    dnf -qy install $PKG
+    if [ -x /usr/bin/dnf ]; then
+        dnf -qy update
+        dnf -qy install $PKG
+    else
+        yum -q -y update
+        yum -q -y install $PKG
+    fi
 else
     # Debian, ...
     PKG+="git build-essential wget "
@@ -25,7 +30,7 @@ if [[ ! -d ~/proj ]]; then mkdir ~/proj; fi
 # setup cmake
 if [[ ! -d ~/proj/cmake-3.2.2 ]]; then
     cd ~/proj
-    wget http://www.cmake.org/files/v3.2/cmake-3.2.2.tar.gz
+    wget --no-check-certificate https://www.cmake.org/files/v3.2/cmake-3.2.2.tar.gz
     tar xf cmake-3.2.2.tar.gz
     cd cmake-3.2.2
     ./configure --prefix=/usr
@@ -33,10 +38,31 @@ if [[ ! -d ~/proj/cmake-3.2.2 ]]; then
 fi
 
 # setup repos
-for proj in leatherman facter; do
+for proj in leatherman facter puppet; do
     if [[ ! -d ~/proj/$proj ]]; then
 	cd ~/proj
 	git clone https://github.com/ahenroid/$proj
 	cd $proj && git remote add upstream https://github.com/puppetlabs/$proj
+    fi
+done
+
+# setup rbenv
+if [[ ! -d ~/.rbenv ]]; then
+    git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+    git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+    cd ~/.rbenv && src/configure && make -C src
+    export RUBY_CONFIGURE_OPTS="--enable-shared"
+    # rbenv install 2.1.10
+    # rbenv global 2.1.10
+fi
+
+# fetch .netrc & ssh keys
+SSH_HOME=andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid
+if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
+for f in .netrc .ssh/config .ssh/id_rsa .ssh/id_rsa.pub .ssh/id_rsa-acceptance; do
+    if [ ! -f "$HOME/$f" ]; then
+	echo -n "setup: fetching $f... "
+	scp $SSH_HOME/$f $HOME/`dirname $f`/
+	chmod 600 "$HOME/$f"
     fi
 done

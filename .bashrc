@@ -44,6 +44,7 @@ fi
 # Ruby
 if [ -d "$HOME/.rbenv" ]; then
   export PATH="$HOME/.rbenv/bin:$PATH"
+  export RUBY_CONFIGURE_OPTS="--enable-shared"
   eval "$(rbenv init -)"
 fi
 
@@ -52,4 +53,5 @@ if [ -d "$HOME/.slice" ]; then
     source "$HOME/.slice/bin/activate"
     source "$HOME/.slice/`whoami`-openrc.sh"
 fi
-
+alias fedora="ssh -i ~/.ssh/id_rsa fedora@10.32.164.48"
+alias debian="ssh -i ~/.ssh/id_rsa debian@10.32.171.183"
