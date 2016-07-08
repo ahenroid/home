@@ -47,3 +47,9 @@ if [ -d "$HOME/.rbenv" ]; then
   eval "$(rbenv init -)"
 fi
 
+# Slice
+if [ -d "$HOME/.slice" ]; then
+    source "$HOME/.slice/bin/activate"
+    source "$HOME/.slice/`whoami`-openrc.sh"
+fi
+

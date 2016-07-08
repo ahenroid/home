@@ -1,5 +1,26 @@
 #
 # bundle
 #
+
 bundle install
-bundle exec rspec spec
+
+bundle exec puppet master --no-daemonize --certname=localhost [--debug]
+bundle exec puppet agent --test --server localhost --certname=localhost
+
+bundle exec puppet config print [reportdir]
+bundle exec puppet resource host localhost
+bundle exec puppet resource user puppet ensure=present
+bundle exec puppet resource group puppet ensure=present
+
+bundle exec rspec spec[/.../*.rb]
+bundle exec rake spec [TEST=spec/.../...rb]
+bundle exec rake rubocop [commits -T]
+
+bundle exec rake ci:test:aio SHA=[...] SUITE_COMMIT=[...] TEST_TARGET=[ubuntu1404-64a] TEST=[tests/facts/ubuntu.rb] OPTIONS="--preserve-hosts-always"
+
+bundle exec build puppet-agent debian-8-amd64
+
+bundle exec beaker --hosts ... --tests ... --preserve-hosts-always --debug --no-provision
+
+
+
