@@ -1,4 +1,5 @@
-# setup -*- mode: Shell-script;-*-
+#!/bin/sh
+# -*- mode: Shell-script;-*-
 
 # update packages
 if [ -f /etc/redhat-release ]; then

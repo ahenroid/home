@@ -1,0 +1,8 @@
+#!/bin/sh
+# -*- mode: Shell-script;-*-
+
+if [ -d $HOME/home/.git ]; then
+    mv $HOME/home/* $HOME/home/.[a-z]* .
+    rmdir $HOME/home
+    source $HOME/.bashrc
+fi
