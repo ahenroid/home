@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # -*- mode: Shell-script;-*-
 
 # update packages
@@ -19,7 +19,7 @@ else
     # Debian, ...
     PKG+="git build-essential wget "
     PKG+="libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev "
-    PKG+="libcurl4-openssl-dev ruby-dev "
+    PKG+="libcurl4-openssl-dev ruby-dev libreadline-dev "
     PKG+="emacs-nox "
     apt-get -qqy update
     apt-get -qqy install $PKG

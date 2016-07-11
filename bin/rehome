@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # -*- mode: Shell-script;-*-
 
 if [ -d $HOME/home/.git ]; then
