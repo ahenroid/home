@@ -1,6 +1,5 @@
 #!/bin/bash
 # -*- mode: Shell-script;-*-
-# setup rbenv
 
 if [[ ! -d ~/.rbenv ]]; then
     git clone https://github.com/rbenv/rbenv.git ~/.rbenv
