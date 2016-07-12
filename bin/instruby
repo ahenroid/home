@@ -1,0 +1,18 @@
+#!/bin/bash
+# -*- mode: Shell-script;-*-
+# setup rbenv
+
+if [[ ! -d ~/.rbenv ]]; then
+    git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+    git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+    cd ~/.rbenv && src/configure && make -C src
+fi
+
+export RUBY_CONFIGURE_OPTS="--enable-shared"
+
+# build various ruby versions
+for ver in 2.2.5 2.3.1 2.1.10; do
+    if [[ ! -d ~/.rbenv/versions/$ver ]]; then
+	~/.rbenv/bin/rbenv install $ver && ~/.rbenv/bin/rbenv global $ver || break
+    fi
+done
