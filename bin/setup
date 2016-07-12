@@ -65,7 +65,7 @@ if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
 for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
     if [ ! -f "$HOME/$f" ]; then
 	echo -n "setup: fetching $f... "
-	scp -oStrictHostKeyChecking=no $SSH_HOME/$f $HOME/`dirname $f`/
+	scp -oStrictHostKeyChecking=no $SSH_HOME/$f $HOME/`dirname $f`/ || break
 	chmod 600 "$HOME/$f"
     fi
 done
