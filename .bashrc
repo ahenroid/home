@@ -20,6 +20,8 @@ if [ -f /etc/redhat-release ]; then
     else
         PS1="redhat"
     fi
+elif [ -f /etc/lsb-release ] && grep -iq ubuntu /etc/lsb-release; then
+    PS1="ubuntu"
 elif [ -f /etc/debian_version ]; then
     PS1="debian"
 elif [ -f /etc/SUSE-release ]; then
