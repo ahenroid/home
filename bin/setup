@@ -7,7 +7,7 @@ if [ -f /etc/redhat-release ]; then
     PKG+="gcc-c++ cmake git wget "
     PKG+="openssl-devel readline-devel zlib-devel "
     PKG+="boost-devel libcurl-devel yaml-cpp-devel "
-    PKG+="emacs-nox "
+    PKG+="emacs-nox gdb "
     if [ -x /usr/bin/dnf ]; then
         dnf -qy update
         dnf -qy install $PKG
@@ -17,10 +17,10 @@ if [ -f /etc/redhat-release ]; then
     fi
 else
     # Debian, ...
-    PKG+="git cmake build-essential wget "
+    PKG+="build-essential cmake git wget "
     PKG+="libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev "
     PKG+="libcurl4-openssl-dev ruby-dev libreadline-dev "
-    PKG+="emacs-nox "
+    PKG+="emacs-nox gdb "
     apt-get -qqy update
     apt-get -qqy install $PKG
 fi
