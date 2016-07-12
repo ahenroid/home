@@ -17,7 +17,7 @@ if [ -f /etc/redhat-release ]; then
     fi
 else
     # Debian, ...
-    PKG+="git build-essential wget "
+    PKG+="git cmake build-essential wget "
     PKG+="libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev "
     PKG+="libcurl4-openssl-dev ruby-dev libreadline-dev "
     PKG+="emacs-nox "
@@ -29,13 +29,15 @@ fi
 if [[ ! -d ~/proj ]]; then mkdir ~/proj; fi
 
 # setup cmake
-if [[ ! -d ~/proj/cmake-3.2.2 ]]; then
+CMAKE_EXE=$(which cmake)
+CMAKE_VER=""
+if [ -x "$CMAKE_EXE" ]; then
+    CMAKE_VER=`$CMAKE_EXE --version | awk '/ version / {print $3}'`
+fi
+if [[ "$CMAKE_VER" < "3.2.2" && ! -d ~/proj/cmake-3.2.2 ]]; then
     cd ~/proj
-    wget --no-check-certificate https://www.cmake.org/files/v3.2/cmake-3.2.2.tar.gz
-    tar xf cmake-3.2.2.tar.gz
-    cd cmake-3.2.2
-    ./configure --prefix=/usr
-    make all install
+    wget --no-check-certificate https://www.cmake.org/files/v3.2/cmake-3.2.2.tar.gz && tar xf cmake-3.2.2.tar.gz
+    cd cmake-3.2.2 && ./configure --prefix=/usr && make all install
 fi
 
 # setup repos
@@ -57,13 +59,13 @@ if [[ ! -d ~/.rbenv ]]; then
     # rbenv global 2.1.10
 fi
 
-# fetch .netrc & ssh keys
+# fetch ssh keys & .netrc
 SSH_HOME=andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid
 if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
-for f in .netrc .ssh/config .ssh/id_rsa .ssh/id_rsa.pub .ssh/id_rsa-acceptance; do
+for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
     if [ ! -f "$HOME/$f" ]; then
 	echo -n "setup: fetching $f... "
-	scp $SSH_HOME/$f $HOME/`dirname $f`/
+	scp -oStrictHostKeyChecking=no $SSH_HOME/$f $HOME/`dirname $f`/
 	chmod 600 "$HOME/$f"
     fi
 done
