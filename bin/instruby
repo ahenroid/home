@@ -15,4 +15,12 @@ for ver in 2.2.5 2.3.1 2.1.10; do
     if [[ ! -d ~/.rbenv/versions/$ver ]]; then
 	~/.rbenv/bin/rbenv install $ver && ~/.rbenv/bin/rbenv global $ver || break
     fi
+    if [[ ! -d ~/proj/ruby ]]; then mkdir -p ~/proj/ruby; fi
+    if [[ ! -d ~/proj/ruby/ruby-$ver ]]; then
+	cd ~/proj/ruby
+	verbase=`echo $ver | awk -F. '{printf "%d.%d", $1, $2}'`
+	wget https://cache.ruby-lang.org/pub/ruby/$verbase/ruby-$ver.tar.bz2 \
+	    &&	bunzip2 -c ruby-$ver.tar.bz2 | tar xf - \
+	    && rm ruby-$ver.tar.bz2
+    fi
 done
