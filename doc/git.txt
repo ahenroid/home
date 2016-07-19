@@ -21,6 +21,12 @@ git remote add upstream https://github.com/puppetlabs/[PROJ]
 git remote -v
 
 #
+# Fetch pushed branch
+#
+git fetch origin [BRANCH]
+git checkout [BRANCH]
+
+#
 # Update fork
 #
 git clone https://github.com/ahenroid/[PROJ]
