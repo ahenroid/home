@@ -7,19 +7,19 @@ if [[ ! -d ~/.rbenv ]]; then
     cd ~/.rbenv && src/configure && make -C src
 fi
 
-export RUBY_CONFIGURE_OPTS="--enable-shared"
-
 # build various ruby versions
-for ver in 2.2.5 2.3.1 2.1.10; do
+for ver in 2.1.10 2.2.5 2.3.1; do
     if [[ ! -d ~/.rbenv/versions/$ver ]]; then
-	~/.rbenv/bin/rbenv install $ver && ~/.rbenv/bin/rbenv global $ver || break
+	export RUBY_CONFIGURE_OPTS="--enable-shared"
+	~/.rbenv/bin/rbenv install $ver || break
     fi
+    ~/.rbenv/bin/rbenv global $ver || break
     if [[ ! -d ~/proj/ruby ]]; then mkdir -p ~/proj/ruby; fi
     if [[ ! -d ~/proj/ruby/ruby-$ver ]]; then
 	cd ~/proj/ruby
 	verbase=`echo $ver | awk -F. '{printf "%d.%d", $1, $2}'`
 	wget https://cache.ruby-lang.org/pub/ruby/$verbase/ruby-$ver.tar.bz2 \
-	    &&	bunzip2 -c ruby-$ver.tar.bz2 | tar xf - \
+	    && bunzip2 -c ruby-$ver.tar.bz2 | tar xf - \
 	    && rm ruby-$ver.tar.bz2
     fi
 done
