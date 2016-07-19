@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# update repos
+for proj in leatherman facter puppet; do
+    if [[ -d ~/proj/$proj ]]; then
+	cd ~/proj/$proj
+	git fetch upstream \
+	    && git checkout master \
+	    && git merge upstream/master \
+	    && git push origin master
+    fi
+done
