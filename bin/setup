@@ -1,67 +1,60 @@
 #!/bin/bash
 # -*- mode: Shell-script;-*-
 
-PKGMGR="apt-get -qqy"
-if [ -f /etc/redhat-release ]; then
-    if [ -x /usr/bin/dnf ]; then
-	PKGMGR="dnf -qy"
-    else
-	PKGMGR="yum -q -y"
+ME=`basename $0`
+
+# global settings
+CMAKE_VER="3.2.2"
+RUBY_VERS="2.1.10 2.2.5 2.3.1"
+PUPPET_PROJS="leatherman facter puppet"
+
+# rehome if necessary
+BASE=`dirname $0`
+if [[ "$BASE" = "./home/bin" || "$BASE" = "home/bin" ]]; then
+    if [[ ! -d ~/.git && -d ./home/.git ]]; then
+	echo "$ME: moved repository to $HOME"
+	mv ./home/* ./home/.[a-z]* . && rmdir ./home && exec ~/bin/$ME $*
     fi
 fi
 
-# update packages
-if [ -f /etc/redhat-release ]; then
-    # Fedora, Redhat
-    PKG+="gcc-c++ cmake git wget "
-    PKG+="openssl-devel readline-devel zlib-devel "
-    PKG+="boost-devel libcurl-devel yaml-cpp-devel "
-    PKG+="emacs-nox gdb "
-    sudo $PKGMGR update
-    sudo $PKGMGR install $PKG
-else
-    # Debian, ...
-    PKG+="build-essential cmake git wget "
-    PKG+="libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev "
-    PKG+="libcurl4-openssl-dev ruby-dev libreadline-dev "
-    PKG+="emacs-nox gdb "
-    sudo $PKGMGR update
-    sudo $PKGMGR install $PKG
-fi
-
-# create proj/ directory
-if [[ ! -d ~/proj ]]; then mkdir ~/proj; fi
-
-# setup cmake
-CMAKE_EXE=$(which cmake)
-CMAKE_VER=""
-if [ -x "$CMAKE_EXE" ]; then
-    CMAKE_VER=`$CMAKE_EXE --version | awk '/ version / {print $3}'`
-fi
-if [[ "$CMAKE_VER" < "3.2.2" && ! -d ~/proj/cmake-3.2.2 ]]; then
-    cd ~/proj
-    wget --no-check-certificate https://www.cmake.org/files/v3.2/cmake-3.2.2.tar.gz && tar xf cmake-3.2.2.tar.gz
-    cd cmake-3.2.2 && ./configure --prefix=/usr && make all
-    sudo make install
-fi
-
-# setup repos
-for proj in leatherman facter puppet; do
-    if [[ ! -d ~/proj/$proj ]]; then
-	cd ~/proj
-	git clone https://github.com/ahenroid/$proj
-	cd $proj && git remote add upstream https://github.com/puppetlabs/$proj
-    fi
+# parse command line options
+while true; do
+    case "$1" in
+	-r|--ruby)
+	    OPT_RUBY=1
+	    ;;
+	-b|--build)
+	    OPT_BUILD=1
+	    ;;
+	-x|--rebuild)
+	    OPT_REBUILD=1
+	    ;;
+	-u|--update)
+	    OPT_UPDATE=1
+	    ;;
+	-*)
+	    if [[ "$1" != "-h" && "$1" != "--help" ]]; then
+		echo "$ME: unrecognized option \`$1'"
+	    fi
+	    echo "Usage: $ME [OPTIONS]"
+	    echo " -r|--ruby     Build and configure Ruby"
+	    echo " -b|--build    Build Leatherman and Facter"
+	    echo " -x|--rebuild  Build Leatherman and Facter"
+	    echo " -u|--update   Update repositories"
+	    echo " -h|--help"
+	    exit 1
+	    ;;
+	*)
+	    break;
+	    ;;
+    esac
+    shift
 done
 
-# setup rbenv
-if [[ ! -d ~/.rbenv ]]; then
-    git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-    git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-    cd ~/.rbenv && src/configure && make -C src
-    export RUBY_CONFIGURE_OPTS="--enable-shared"
-    # rbenv install 2.1.10
-    # rbenv global 2.1.10
+# get sudo permission
+if [[ $EUID -ne 0 ]]; then
+    echo -n "$ME: checking sudo permission..."
+    sudo echo
 fi
 
 # fetch ssh keys & .netrc
@@ -69,8 +62,149 @@ SSH_HOME=andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid
 if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
 for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
     if [ ! -f "$HOME/$f" ]; then
-	echo -n "setup: fetching $f... "
+	echo -n "$ME: fetching $f..."
 	scp -oStrictHostKeyChecking=no $SSH_HOME/$f $HOME/`dirname $f`/ || break
 	chmod 600 "$HOME/$f"
     fi
 done
+
+# update packages
+if [ -f /etc/redhat-release ]; then
+    if [ -x /usr/bin/dnf ]; then
+	PKGMGR="dnf -qy"
+    else
+	PKGMGR="yum -q -y"
+    fi
+else
+    PKGMGR="apt-get -qqy"
+fi
+echo -n "$ME: checking installed packages..."
+if [ -f /etc/redhat-release ]; then
+    # Fedora, Redhat
+    PKG+="gcc-c++ cmake git wget"
+    PKG+=" openssl-devel readline-devel zlib-devel"
+    PKG+=" boost-devel libcurl-devel yaml-cpp-devel"
+    PKG+=" emacs-nox gdb valgrind"
+    sudo $PKGMGR update > /dev/null
+    sudo $PKGMGR install $PKG > /dev/null
+else
+    # Debian, Ubuntu
+    PKG+="build-essential cmake git wget"
+    PKG+=" libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev"
+    PKG+=" libcurl4-openssl-dev ruby-dev libreadline-dev"
+    PKG+=" emacs-nox gdb valgrind"
+    sudo $PKGMGR update > /dev/null
+    sudo $PKGMGR install $PKG > /dev/null
+fi
+echo
+
+# setup repos
+for proj in $PUPPET_PROJS; do
+    if [ ! -d ~/proj/$proj ]; then
+	echo "$ME: cloning $proj"
+	if [ ! -d ~/proj ]; then mkdir ~/proj; fi
+	cd ~/proj
+	git clone https://github.com/ahenroid/$proj > /dev/null \
+	    && cd $proj \
+	    && git remote add upstream https://github.com/puppetlabs/$proj
+    fi
+done
+
+# setup cmake
+CMAKE_EXE=$(which cmake)
+CMAKE_NOW=""
+if [ -x "$CMAKE_EXE" ]; then
+    CMAKE_NOW=`$CMAKE_EXE --version | awk '/ version / {print $3}'`
+fi
+if [[ "$CMAKE_NOW" < "${CMAKE_VER}" && ! -d ~/proj/cmake-${CMAKE_VER} ]]; then
+    echo -n "$ME: building cmake..."
+    cd ~/proj
+    wget --no-check-certificate https://www.cmake.org/files/v3.2/cmake-${CMAKE_VER}.tar.gz > /dev/null \
+	&& tar xf cmake-${CMAKE_VER}.tar.gz > /dev/null \
+	&& rm cmake-${CMAKE_VER}.tar.gz \
+	&& cd cmake-${CMAKE_VER} \
+	&& ./configure --prefix=/usr > /dev/null \
+	&& make all > /dev/null \
+	&& sudo make install > /dev/null
+fi
+
+if [ -n "$OPT_RUBY" ]; then
+    # install rbenv
+    if [ ! -d ~/.rbenv ]; then
+	echo "$ME: installing rbenv"
+	git clone https://github.com/rbenv/rbenv.git ~/.rbenv > /dev/null
+	git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build > /dev/null
+	cd ~/.rbenv && src/configure > /dev/null && make -C src > /dev/null
+    fi
+
+    # build various Ruby versions
+    for ver in $RUBY_VERS; do
+	if [ ! -d ~/.rbenv/versions/$ver ]; then
+	    echo -n "$ME: installing Ruby $ver..."
+	    export RUBY_CONFIGURE_OPTS="--enable-shared"
+	    ~/.rbenv/bin/rbenv install $ver > /dev/null || exit 1
+	    echo
+	fi
+	
+	if [ ! -d ~/proj/ruby/ruby-$ver ]; then
+	    echo "$ME: installing Ruby $ver source"
+	    if [ ! -d ~/proj/ruby ]; then mkdir -p ~/proj/ruby; fi
+	    cd ~/proj/ruby
+	    verbase=`echo $ver | awk -F. '{printf "%d.%d", $1, $2}'`
+	    wget https://cache.ruby-lang.org/pub/ruby/$verbase/ruby-$ver.tar.bz2 \
+		&& bunzip2 -c ruby-$ver.tar.bz2 | tar xf - \
+		&& rm ruby-$ver.tar.bz2
+	fi
+	
+	echo "$ME: configuring Ruby $ver"
+	~/.rbenv/bin/rbenv global $ver || break
+	for pkg in bundler rdoc; do
+	    if ! gem list --local | grep -q "$pkg"; then
+		echo "$ME: installing $pkg"
+		gem install $pkg > /dev/null
+	    fi
+	done
+	if [ -d ~/proj/puppet ]; then
+	    cd ~/proj/puppet
+	    bundle install > /dev/null
+	fi
+    done
+fi
+
+if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
+    if [ -n "$OPT_REBUILD" ]; then
+	rm -rf ~/proj/leatherman/build
+    fi
+    if [[ -d ~/proj/leatherman  && ! -d ~/proj/leatherman/build ]]; then
+	echo "$ME: building Leatherman..."
+	mkdir ~/proj/leatherman/build
+	cd ~/proj/leatherman/build
+	cmake -DCMAKE_BUILD_TYPE=Debug .. > /dev/null \
+	    && make \
+	    && sudo make install > /dev/null
+    fi
+    
+    if [ -n "$OPT_REBUILD" ]; then
+	rm -rf ~/proj/facter/build
+    fi
+    if [[ -d ~/proj/facter  && ! -d ~/proj/facter/build ]]; then
+	echo "$ME: building Facter..."
+	mkdir ~/proj/facter/build
+	cd ~/proj/facter/build
+	cmake -DCMAKE_BUILD_TYPE=Debug .. > /dev/null \
+	    && make
+    fi
+fi
+
+if [ -n "$OPT_UPDATE" ]; then
+    for proj in $PUPPET_PROJS; do
+	if [ -d ~/proj/$proj ]; then
+	    echo "$ME: updating $proj"
+	    cd ~/proj/$proj
+	    git fetch upstream \
+		&& git checkout master \
+		&& git merge upstream/master \
+		&& git push origin master
+	fi
+    done
+fi
