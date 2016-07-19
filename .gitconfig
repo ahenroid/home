@@ -3,3 +3,5 @@ name=Andy Henroid
 email=andy.henroid@puppet.com
 [github]
 user=ahenroid
+[push]
+default=current
