@@ -77,3 +77,5 @@ git branch -d [BRANCH]
 #
 git commit --amend
 git remote set-url origin git@github.com:ahenroid/puppet-agent.git
+git config --local push.default current
+git commit -am "[MESSAGE]"
