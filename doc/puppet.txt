@@ -1,0 +1,31 @@
+#
+# install
+#
+wget https://apt.puppetlabs.com/puppetlabs-release-pc1-jessie.deb # debian8
+wget https://apt.puppetlabs.com/puppetlabs-release-pc1-wheezy.deb # debian7
+wget https://apt.puppetlabs.com/puppetlabs-release-pc1-trusty.deb # ubuntu14.04
+wget https://apt.puppetlabs.com/puppetlabs-release-pc1-precise.deb # ubuntu12.04
+wget https://apt.puppetlabs.com/puppetlabs-release-pc1-wily.deb # ubuntu15.10
+wget https://apt.puppetlabs.com/puppetlabs-release-pc1-xenial.deb # ubuntu16.04
+sudo dpkg -i puppetlabs-release-*.deb
+sudo apt-get update
+sudo apt-get install [puppet-agent|puppetserver|puppetdb]
+# /opt/puppetlabs/bin/puppet --version
+sudo rpm -Uvh https://yum.puppetlabs.com/puppetlabs-release-pc1-fedora-23.noarch.rpm # fedora23
+sudo rpm -Uvh https://yum.puppetlabs.com/puppetlabs-release-pc1-fedora-22.noarch.rpm # fedora22
+sudo rpm -Uvh https://yum.puppetlabs.com/puppetlabs-release-pc1-el-7.noarch.rpm # el7
+sudo rpm -Uvh https://yum.puppetlabs.com/puppetlabs-release-pc1-el-6.noarch.rpm # el6
+wget https://yum.puppetlabs.com/puppetlabs-release-pc1-el-5.noarch.rpm # el5
+sudo rpm -Uvh puppetlabs-release-pc1-el-5.noarch.rpm # el5
+sudo dnf update
+sudo dnf install puppet-agent
+
+#
+# local testing
+#
+puppet apply -e "file {'/root': ensure=>directory, owner=>'root', mode=>'0700'}"
+puppet config print [reportdir|bucketdir]
+puppet resource host localhost
+puppet resource user puppet ensure=present
+puppet resource group puppet ensure=present
+

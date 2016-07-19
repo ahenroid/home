@@ -7,11 +7,6 @@ bundle install
 bundle exec puppet master --no-daemonize --certname=localhost [--debug]
 bundle exec puppet agent --test --server localhost --certname=localhost
 
-bundle exec puppet config print [reportdir]
-bundle exec puppet resource host localhost
-bundle exec puppet resource user puppet ensure=present
-bundle exec puppet resource group puppet ensure=present
-
 bundle exec rspec spec[/.../*.rb]
 bundle exec rake spec [TEST=spec/.../...rb]
 bundle exec rake rubocop [commits -T]
