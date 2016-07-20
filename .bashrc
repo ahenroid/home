@@ -55,5 +55,6 @@ if [ -d "$HOME/.slice" ]; then
     source "$HOME/.slice/bin/activate"
     source "$HOME/.slice/`whoami`-openrc.sh"
 fi
-alias fedora="ssh -i ~/.ssh/id_rsa fedora@10.32.164.48"
-alias debian="ssh -i ~/.ssh/id_rsa debian@10.32.171.183"
+alias fedora="ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no fedora@10.32.164.48"
+alias debian="ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no debian@10.32.171.183"
+alias centos="ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no centos@10.32.173.7"
