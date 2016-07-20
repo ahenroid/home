@@ -5,10 +5,10 @@ ME=`basename $0`
 
 # default settings
 BUILD_DEFAULT="leatherman facter puppet hiera"
-CMAKE_DEFAULT="3.2.2"
+CMAKE_DEFAULT="3.6.0"
 RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
 PUPPET_DEFAULT="puppet-agent"
-KEYS_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid"
+HOME_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid"
 
 # rehome if necessary
 BASE=`dirname $0`
@@ -33,7 +33,7 @@ while true; do
 	-u=*|--update=*) OPT_UPDATE=$VALS ;;
 	-p|--puppet) OPT_PUPPET=$PUPPET_DEFAULT ;;
 	-p=*|--puppet=*) OPT_PUPPET=$VALS ;;
-	-k|--keys) OPT_KEYS=$KEYS_DEFAULT ;;
+	-k|--keys) OPT_KEYS=$HOME_DEFAULT ;;
 	-k=*|--keys=*) OPT_KEYS=$VALS ;;
 	-*)
 	    if [[ "$1" != "-h" && "$1" != "--help" ]]; then
@@ -60,21 +60,25 @@ if [[ $EUID -ne 0 ]]; then
     sudo echo -n
 fi
 
-# fetch ssh keys & .netrc
+# determine remote HOME
+OPT_HOME=$HOME_DEFAULT
 if [ -n "$OPT_KEYS" ]; then
     if [ -z "`echo "$OPT_KEYS" | awk -F@ '{print $2}'`" ]; then
-	OPT_KEYS=`echo "$OPT_KEYS" | awk -F@ '{print $1}'`
-	OPT_KEYS="`echo "$KEYS_DEFAULT" | awk -F@ '{print $1}'`@${OPT_KEYS}"
+	OPT_HOME=`echo "$OPT_KEYS" | awk -F@ '{print $1}'`
+	OPT_HOME="`echo "$HOME_DEFAULT" | awk -F@ '{print $1}'`@${OPT_HOME}"
     fi
-    if [ -z "`echo "$OPT_KEYS" | awk -F:/ '{print $2}'`" ]; then
-	OPT_KEYS="${OPT_KEYS}:/Users/`echo \"$OPT_KEYS\" | awk -F@ '{print $1}'`"
+    if [ -z "`echo "$OPT_HOME" | awk -F:/ '{print $2}'`" ]; then
+	OPT_HOME="${OPT_HOME}:/Users/`echo \"$OPT_HOME\" | awk -F@ '{print $1}'`"
     fi
+fi
     
+# fetch ssh keys & .netrc
+if [ -n "$OPT_KEYS" ]; then
     if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
     for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
 	if [ ! -f "$HOME/$f" ]; then
 	    echo "$ME: fetching $f..."
-	    scp -q -oStrictHostKeyChecking=no ${OPT_KEYS}/$f $HOME/`dirname $f`/ || break
+	    scp -q -oStrictHostKeyChecking=no ${OPT_HOME}/$f $HOME/`dirname $f`/ || break
 	    chmod 600 "$HOME/$f"
 	fi
     done
@@ -182,26 +186,24 @@ if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
     CMAKE_EXE=$(which cmake)
     CMAKE_NOW=""
     if [ -x "$CMAKE_EXE" ]; then
-	CMAKE_NOW=`$CMAKE_EXE --version | awk '/ version / {print $3}'`
+	CMAKE_NOW=`${CMAKE_EXE} --version 2>/dev/null | awk '/ version / {print $3}'`
     fi
-    if [[ "$CMAKE_NOW" < "${CMAKE_DEFAULT}" ]]; then
+    if [[ "${CMAKE_NOW}" < "${CMAKE_DEFAULT}" ]]; then
 	if [ ! -d ~/proj/cmake ]; then mkdir -p ~/proj/cmake; fi
-	CMAKE_BASE=`echo "${CMAKE_DEFAULT}" | awk -F. '{printf "%u.%u", $1, $2}'`
-	if [ ! -d ~/proj/cmake/cmake-${CMAKE_DEFAULT} ]; then
+	CMAKE_DIR="cmake-${CMAKE_DEFAULT}-`uname -s`-`uname -m`"
+	if [ ! -d ~/proj/cmake/${CMAKE_DIR} ]; then
 	    echo -n "$ME: downloading cmake ${CMAKE_DEFAULT}..."
 	    cd ~/proj/cmake
-	    wget -q --no-check-certificate https://www.cmake.org/files/v${CMAKE_BASE}/cmake-${CMAKE_DEFAULT}.tar.gz \
-		&& tar xf cmake-${CMAKE_DEFAULT}.tar.gz > /dev/null \
-		&& rm cmake-${CMAKE_DEFAULT}.tar.gz
+	    scp -q -oStrictHostKeyChecking=no ${OPT_HOME}/down/${CMAKE_DIR}.tar.gz /dev/stdout | tar xfz -
 	    echo
 	fi
-	    
-	echo -n "$ME: building cmake ${CMAKE_DEFAULT}..."
-	cd ~/proj/cmake/cmake-${CMAKE_DEFAULT} \
-	    && ./configure --prefix=/usr > /dev/null \
-	    && make all > /dev/null \
-	    && sudo make install > /dev/null
-	echo
+
+	if [ -d ~/proj/cmake/${CMAKE_DIR} ]; then
+	    cd ~/proj/cmake/${CMAKE_DIR}
+	    echo -n "$ME: installing cmake ${CMAKE_DEFAULT}..."
+	    sudo find bin share/cmake-* -type f -exec install -D -o root -g root {} /usr/{} \;
+	    echo
+	fi
     fi
     
     for proj in $OPT_BUILD; do
