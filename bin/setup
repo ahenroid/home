@@ -191,6 +191,7 @@ if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
     if [[ "${CMAKE_NOW}" < "${CMAKE_DEFAULT}" ]]; then
 	if [ ! -d ~/proj/cmake ]; then mkdir -p ~/proj/cmake; fi
 	CMAKE_DIR="cmake-${CMAKE_DEFAULT}-`uname -s`-`uname -m`"
+	CMAKE_DIR=`echo ${CMAKE_DIR} | sed -e 's/i686/i386/'`
 	if [ ! -d ~/proj/cmake/${CMAKE_DIR} ]; then
 	    echo -n "$ME: downloading cmake ${CMAKE_DEFAULT}..."
 	    cd ~/proj/cmake
