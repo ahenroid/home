@@ -8,7 +8,7 @@ BUILD_DEFAULT="leatherman facter puppet"
 CMAKE_DEFAULT="3.2.2"
 RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
 PUPPET_DEFAULT="4.5.2"
-LOGIN_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net"
+LOGIN_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid"
 
 # rehome if necessary
 BASE=`dirname $0`
@@ -61,14 +61,21 @@ if [[ $EUID -ne 0 ]]; then
     sudo echo
 fi
 
+# fetch ssh keys & .netrc
 if [ -n "$OPT_LOGIN" ]; then
-    # fetch ssh keys & .netrc
-    SSH_HOME=${OPT_LOGIN}:/Users/andy.henroid
+    if [ -z "`echo "$OPT_LOGIN" | awk -F@ '{print $2}'`" ]; then
+	OPT_LOGIN=`echo "$OPT_LOGIN" | awk -F@ '{print $1}'`
+	OPT_LOGIN="`echo "$LOGIN_DEFAULT" | awk -F@ '{print $1}'`@${OPT_LOGIN}"
+    fi
+    if [ -z "`echo "$OPT_LOGIN" | awk -F:/ '{print $2}'`" ]; then
+	OPT_LOGIN="${OPT_LOGIN}:/Users/`echo \"$OPT_LOGIN\" | awk -F@ '{print $1}'`"
+    fi
+
     if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
     for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
 	if [ ! -f "$HOME/$f" ]; then
 	    echo -n "$ME: fetching $f..."
-	    scp -oStrictHostKeyChecking=no $SSH_HOME/$f $HOME/`dirname $f`/ || break
+	    scp -oStrictHostKeyChecking=no ${OPT_LOGIN}/$f $HOME/`dirname $f`/ || break
 	    chmod 600 "$HOME/$f"
 	fi
     done
