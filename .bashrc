@@ -31,6 +31,9 @@ fi
 if [[ "$USER" == "vagrant" ]]; then
     PS1="vg:$PS1"
 fi
+if [[ "$TERM" == "screen" ]]; then
+    PS1="sc:$PS1"
+fi
 export PS1="$PS1% "
 
 # OSX
