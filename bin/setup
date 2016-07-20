@@ -171,14 +171,20 @@ if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
     if [ -x "$CMAKE_EXE" ]; then
 	CMAKE_NOW=`$CMAKE_EXE --version | awk '/ version / {print $3}'`
     fi
-    if [[ "$CMAKE_NOW" < "${CMAKE_DEFAULT}" && ! -d ~/proj/cmake-${CMAKE_DEFAULT} ]]; then
-	echo -n "$ME: building cmake ${CMAKE_DEFAULT}..."
-	cd ~/proj
+    if [[ "$CMAKE_NOW" < "${CMAKE_DEFAULT}" ]]; then
+	if [ ! -d ~/proj/cmake ]; then mkdir -p ~/proj/cmake; fi
 	CMAKE_BASE=`echo "${CMAKE_DEFAULT}" | awk -F. '{printf "%u.%u", $1, $2}'`
-	wget --quiet --no-check-certificate https://www.cmake.org/files/v${CMAKE_BASE}/cmake-${CMAKE_DEFAULT}.tar.gz \
-	    && tar xf cmake-${CMAKE_DEFAULT}.tar.gz > /dev/null \
-	    && rm cmake-${CMAKE_DEFAULT}.tar.gz \
-	    && cd cmake-${CMAKE_DEFAULT} \
+	if [ ! -d ~/proj/cmake/cmake-${CMAKE_DEFAULT} ]; then
+	    echo -n "$ME: downloading cmake ${CMAKE_DEFAULT}..."
+	    cd ~/proj/cmake
+	    wget --quiet --no-check-certificate https://www.cmake.org/files/v${CMAKE_BASE}/cmake-${CMAKE_DEFAULT}.tar.gz \
+		&& tar xf cmake-${CMAKE_DEFAULT}.tar.gz > /dev/null \
+		&& rm cmake-${CMAKE_DEFAULT}.tar.gz
+	    echo
+	fi
+	    
+	echo -n "$ME: building cmake ${CMAKE_DEFAULT}..."
+	cd ~/proj/cmake/cmake-${CMAKE_DEFAULT} \
 	    && ./configure --prefix=/usr > /dev/null \
 	    && make all > /dev/null \
 	    && sudo make install > /dev/null
