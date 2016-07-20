@@ -7,7 +7,7 @@ ME=`basename $0`
 BUILD_DEFAULT="leatherman facter puppet"
 CMAKE_DEFAULT="3.2.2"
 RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
-PUPPET_DEFAULT="4.5.2"
+PUPPET_DEFAULT="puppet-agent"
 KEYS_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid"
 
 # rehome if necessary
@@ -56,8 +56,8 @@ done
 
 # check sudo permission
 if [[ $EUID -ne 0 ]]; then
-    echo -n "$ME: checking sudo permission..."
-    sudo echo
+    echo "$ME: checking sudo permission..."
+    sudo echo -n
 fi
 
 # fetch ssh keys & .netrc
@@ -80,7 +80,7 @@ if [ -n "$OPT_KEYS" ]; then
     done
 fi
 
-if [[ -z "$OPT_RUBY" && -z "$OPT_BUILD"  && -z "$OPT_REBUILD" ]]; then
+if [ -z "${OPT_RUBY}${OPT_BUILD}${OPT_REBUILD}${OPT_PUPPET}" ]; then
     # update packages
     if [ -f /etc/redhat-release ]; then
 	if [ -x /usr/bin/dnf ]; then
@@ -236,9 +236,37 @@ if [ -n "$OPT_UPDATE" ]; then
     done
 fi
 
-if [ -n "$OPT_PUPPET" ]; then
-    if [ ! -d "/opt/puppetlabs/bin" ]; then
-	echo "$ME: installing Puppet $OPT_PUPPET"
-	# XXX
+if [[ -n "$OPT_PUPPET" && ! -d "/opt/puppetlabs/bin" ]]; then
+    if [ -f /etc/os-release ]; then
+	for rel in xenial wily vivid utopic trusty precise jessie wheezy; do
+	    if grep -q $rel /etc/os-release; then
+		PKG="puppetlabs-release-pc1-${rel}.deb"
+		CMD="wget https://apt.puppetlabs.com/${PKG}"
+		CMD+=";sudo dpkg -i ${PKG}"
+		CMD+=";sudo apt-get install $OPT_PUPPET"
+		break
+	    fi
+	done
+    elif [ -f /etc/redhat-release ]; then
+	for rel in 23 22 21 20 7 6 5; do
+	    if grep -q "Fedora release ${rel} " /etc/redhat-release; then
+		PKG="puppetlabs-release-pc1-fedora-${rel}.noarch.rpm"
+		CMD="wget https://yum.puppetlabs.com/${PKG}"
+		CMD+=";sudo rpm -Uvh ${PKG}"
+		CMD+=";sudo dnf install $OPT_PUPPET"
+		break
+	    elif grep -q "Linux release ${rel}\." /etc/redhat-release; then
+		PKG="puppetlabs-release-pc1-el-${rel}.noarch.rpm"
+		CMD="wget https://yum.puppetlabs.com/${PKG}"
+		CMD+=";sudo rpm -Uvh ${PKG}"
+		CMD+=";sudo yum install $OPT_PUPPET"
+		break
+	    fi
+	done
+    fi
+
+    if [ -n "$CMD" ]; then
+	echo "$ME: installing Puppet ($OPT_PUPPET)"
+	$CMD
     fi
 fi
