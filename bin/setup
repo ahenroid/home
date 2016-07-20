@@ -4,7 +4,7 @@
 ME=`basename $0`
 
 # default settings
-BUILD_DEFAULT="leatherman facter puppet"
+BUILD_DEFAULT="leatherman facter puppet hiera"
 CMAKE_DEFAULT="3.2.2"
 RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
 PUPPET_DEFAULT="puppet-agent"
@@ -205,7 +205,9 @@ if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
     fi
     
     for proj in $OPT_BUILD; do
-	if [[ "$proj" = "puppet" ]]; then continue; fi
+	if [[ "$proj" = "puppet" || "$proj" = "hiera" ]]; then
+	    continue
+	fi
 
 	if [ -n "$OPT_REBUILD" ]; then
 	    rm -rf ~/proj/$proj/build
