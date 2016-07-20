@@ -98,7 +98,7 @@ if [ -z "${OPT_RUBY}${OPT_BUILD}${OPT_REBUILD}${OPT_PUPPET}" ]; then
     echo -n "$ME: checking installed packages..."
     if [ -f /etc/redhat-release ]; then
 	# Fedora, Redhat
-	PKG+="gcc-c++ cmake git wget"
+	PKG+="gcc-c++ git wget"
 	PKG+=" openssl-devel readline-devel zlib-devel"
 	PKG+=" boost-devel libcurl-devel yaml-cpp-devel"
 	PKG+=" emacs-nox gdb valgrind screen"
@@ -106,7 +106,7 @@ if [ -z "${OPT_RUBY}${OPT_BUILD}${OPT_REBUILD}${OPT_PUPPET}" ]; then
 	sudo $PKGMGR install $PKG > /dev/null
     else
 	# Debian, Ubuntu
-	PKG+="build-essential cmake git wget"
+	PKG+="build-essential git wget"
 	PKG+=" libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev"
 	PKG+=" libcurl4-openssl-dev ruby-dev libreadline-dev"
 	PKG+=" emacs-nox gdb valgrind screen"
