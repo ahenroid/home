@@ -8,6 +8,7 @@ BUILD_DEFAULT="leatherman facter puppet"
 CMAKE_DEFAULT="3.2.2"
 RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
 PUPPET_DEFAULT="4.5.2"
+LOGIN_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net"
 
 # rehome if necessary
 BASE=`dirname $0`
@@ -19,6 +20,7 @@ if [[ "$BASE" = "./home/bin" || "$BASE" = "home/bin" ]]; then
 fi
 
 # parse command line options
+OPT_LOGIN=$LOGIN_DEFAULT
 while true; do
     VALS=`echo "$1" | awk -F= '{print $2}' | sed -e 's/,/ /g'`
     case "$1" in
@@ -32,6 +34,8 @@ while true; do
 	-u=*|--update=*) OPT_UPDATE=$VALS ;;
 	-p|--puppet) OPT_PUPPET=$PUPPET_DEFAULT ;;
 	-p=*|--puppet=*) OPT_PUPPET=$VALS ;;
+	-l|--login) OPT_LOGIN="" ;;
+	-l=*|--login=*) OPT_LOGIN=$VALS ;;
 	-*)
 	    if [[ "$1" != "-h" && "$1" != "--help" ]]; then
 		echo "$ME: unrecognized option \`$1'"
@@ -42,6 +46,7 @@ while true; do
 	    echo " -x|--rebuild[=facter|leatherman]        Rebuild projects"
 	    echo " -u|--update[=facter|leatherman|puppet]  Update repositories"
 	    echo " -p|--puppet[=VERSION]                   Install Puppet"
+	    echo " -l|--login[=USER@HOST]                  Set remote login"
 	    echo " -h|--help"
 	    exit 1
 	    ;;
@@ -56,16 +61,18 @@ if [[ $EUID -ne 0 ]]; then
     sudo echo
 fi
 
-# fetch ssh keys & .netrc
-SSH_HOME=andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid
-if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
-for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
-    if [ ! -f "$HOME/$f" ]; then
-	echo -n "$ME: fetching $f..."
-	scp -oStrictHostKeyChecking=no $SSH_HOME/$f $HOME/`dirname $f`/ || break
-	chmod 600 "$HOME/$f"
-    fi
-done
+if [ -n "$OPT_LOGIN" ]; then
+    # fetch ssh keys & .netrc
+    SSH_HOME=${OPT_LOGIN}:/Users/andy.henroid
+    if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
+    for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
+	if [ ! -f "$HOME/$f" ]; then
+	    echo -n "$ME: fetching $f..."
+	    scp -oStrictHostKeyChecking=no $SSH_HOME/$f $HOME/`dirname $f`/ || break
+	    chmod 600 "$HOME/$f"
+	fi
+    done
+fi
 
 if [[ -z "$OPT_RUBY" && -z "$OPT_BUILD"  && -z "$OPT_REBUILD" ]]; then
     # update packages
