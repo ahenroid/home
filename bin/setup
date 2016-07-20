@@ -44,7 +44,7 @@ while true; do
 	    echo " -b|--build[=facter|leatherman]          Build projects"
 	    echo " -x|--rebuild[=facter|leatherman]        Rebuild projects"
 	    echo " -u|--update[=facter|leatherman|puppet]  Update repositories"
-	    echo " -p|--puppet[=VERSION]                   Install Puppet"
+	    echo " -p|--puppet[=puppet-agent|puppetserver] Install Puppet"
 	    echo " -k|--keys[=USER@HOST]                   Fetch SSH keys"
 	    echo " -h|--help"
 	    exit 1
@@ -190,7 +190,7 @@ if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
 	if [ ! -d ~/proj/cmake/cmake-${CMAKE_DEFAULT} ]; then
 	    echo -n "$ME: downloading cmake ${CMAKE_DEFAULT}..."
 	    cd ~/proj/cmake
-	    wget --quiet --no-check-certificate https://www.cmake.org/files/v${CMAKE_BASE}/cmake-${CMAKE_DEFAULT}.tar.gz \
+	    wget -q --no-check-certificate https://www.cmake.org/files/v${CMAKE_BASE}/cmake-${CMAKE_DEFAULT}.tar.gz \
 		&& tar xf cmake-${CMAKE_DEFAULT}.tar.gz > /dev/null \
 		&& rm cmake-${CMAKE_DEFAULT}.tar.gz
 	    echo
@@ -241,8 +241,10 @@ if [[ -n "$OPT_PUPPET" && ! -d "/opt/puppetlabs/bin" ]]; then
 	for rel in xenial wily vivid utopic trusty precise jessie wheezy; do
 	    if grep -q $rel /etc/os-release; then
 		PKG="puppetlabs-release-pc1-${rel}.deb"
-		CMD="wget https://apt.puppetlabs.com/${PKG}"
+		CMD="wget -q https://apt.puppetlabs.com/${PKG}"
 		CMD+=";sudo dpkg -i ${PKG}"
+		CMD+=";rm -f ${PKG}"
+		CMD+=";sudo apt-get update"
 		CMD+=";sudo apt-get install $OPT_PUPPET"
 		break
 	    fi
@@ -251,14 +253,18 @@ if [[ -n "$OPT_PUPPET" && ! -d "/opt/puppetlabs/bin" ]]; then
 	for rel in 23 22 21 20 7 6 5; do
 	    if grep -q "Fedora release ${rel} " /etc/redhat-release; then
 		PKG="puppetlabs-release-pc1-fedora-${rel}.noarch.rpm"
-		CMD="wget https://yum.puppetlabs.com/${PKG}"
+		CMD="wget -q https://yum.puppetlabs.com/${PKG}"
 		CMD+=";sudo rpm -Uvh ${PKG}"
+		CMD+=";rm -f ${PKG}"
+		CMD+=";sudo dnf update"
 		CMD+=";sudo dnf install $OPT_PUPPET"
 		break
 	    elif grep -q "Linux release ${rel}\." /etc/redhat-release; then
 		PKG="puppetlabs-release-pc1-el-${rel}.noarch.rpm"
-		CMD="wget https://yum.puppetlabs.com/${PKG}"
+		CMD="wget -q https://yum.puppetlabs.com/${PKG}"
 		CMD+=";sudo rpm -Uvh ${PKG}"
+		CMD+=";rm -f ${PKG}"
+		CMD+=";sudo yum update"
 		CMD+=";sudo yum install $OPT_PUPPET"
 		break
 	    fi
@@ -267,6 +273,6 @@ if [[ -n "$OPT_PUPPET" && ! -d "/opt/puppetlabs/bin" ]]; then
 
     if [ -n "$CMD" ]; then
 	echo "$ME: installing Puppet ($OPT_PUPPET)"
-	$CMD
+	eval $CMD
     fi
 fi
