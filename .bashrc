@@ -11,6 +11,7 @@ alias l="ls"
 alias ll="ls -l"
 alias clean="rm -f *~ .*~"
 alias rclean="find . '(' -name '*~' -or -name '.*~' ')' -exec rm {} \; -print"
+alias screen="/usr/bin/screen -dRR"
 
 # Prompt
 PS1="\h"
