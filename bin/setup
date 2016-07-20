@@ -8,7 +8,7 @@ BUILD_DEFAULT="leatherman facter puppet"
 CMAKE_DEFAULT="3.2.2"
 RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
 PUPPET_DEFAULT="4.5.2"
-LOGIN_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid"
+KEYS_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid"
 
 # rehome if necessary
 BASE=`dirname $0`
@@ -20,7 +20,6 @@ if [[ "$BASE" = "./home/bin" || "$BASE" = "home/bin" ]]; then
 fi
 
 # parse command line options
-OPT_LOGIN=$LOGIN_DEFAULT
 while true; do
     VALS=`echo "$1" | awk -F= '{print $2}' | sed -e 's/,/ /g'`
     case "$1" in
@@ -34,8 +33,8 @@ while true; do
 	-u=*|--update=*) OPT_UPDATE=$VALS ;;
 	-p|--puppet) OPT_PUPPET=$PUPPET_DEFAULT ;;
 	-p=*|--puppet=*) OPT_PUPPET=$VALS ;;
-	-l|--login) OPT_LOGIN="" ;;
-	-l=*|--login=*) OPT_LOGIN=$VALS ;;
+	-k|--keys) OPT_KEYS=$KEYS_DEFAULT ;;
+	-k=*|--keys=*) OPT_KEYS=$VALS ;;
 	-*)
 	    if [[ "$1" != "-h" && "$1" != "--help" ]]; then
 		echo "$ME: unrecognized option \`$1'"
@@ -46,7 +45,7 @@ while true; do
 	    echo " -x|--rebuild[=facter|leatherman]        Rebuild projects"
 	    echo " -u|--update[=facter|leatherman|puppet]  Update repositories"
 	    echo " -p|--puppet[=VERSION]                   Install Puppet"
-	    echo " -l|--login[=USER@HOST]                  Set remote login"
+	    echo " -k|--keys[=USER@HOST]                   Fetch SSH keys"
 	    echo " -h|--help"
 	    exit 1
 	    ;;
@@ -62,20 +61,20 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # fetch ssh keys & .netrc
-if [ -n "$OPT_LOGIN" ]; then
-    if [ -z "`echo "$OPT_LOGIN" | awk -F@ '{print $2}'`" ]; then
-	OPT_LOGIN=`echo "$OPT_LOGIN" | awk -F@ '{print $1}'`
-	OPT_LOGIN="`echo "$LOGIN_DEFAULT" | awk -F@ '{print $1}'`@${OPT_LOGIN}"
+if [ -n "$OPT_KEYS" ]; then
+    if [ -z "`echo "$OPT_KEYS" | awk -F@ '{print $2}'`" ]; then
+	OPT_KEYS=`echo "$OPT_KEYS" | awk -F@ '{print $1}'`
+	OPT_KEYS="`echo "$KEYS_DEFAULT" | awk -F@ '{print $1}'`@${OPT_KEYS}"
     fi
-    if [ -z "`echo "$OPT_LOGIN" | awk -F:/ '{print $2}'`" ]; then
-	OPT_LOGIN="${OPT_LOGIN}:/Users/`echo \"$OPT_LOGIN\" | awk -F@ '{print $1}'`"
+    if [ -z "`echo "$OPT_KEYS" | awk -F:/ '{print $2}'`" ]; then
+	OPT_KEYS="${OPT_KEYS}:/Users/`echo \"$OPT_KEYS\" | awk -F@ '{print $1}'`"
     fi
-
+    
     if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
     for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
 	if [ ! -f "$HOME/$f" ]; then
 	    echo -n "$ME: fetching $f..."
-	    scp -oStrictHostKeyChecking=no ${OPT_LOGIN}/$f $HOME/`dirname $f`/ || break
+	    scp -oStrictHostKeyChecking=no ${OPT_KEYS}/$f $HOME/`dirname $f`/ || break
 	    chmod 600 "$HOME/$f"
 	fi
     done
