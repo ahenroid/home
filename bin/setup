@@ -97,7 +97,7 @@ if [ -z "${OPT_RUBY}${OPT_BUILD}${OPT_REBUILD}${OPT_PUPPET}" ]; then
 	PKG+="gcc-c++ cmake git wget"
 	PKG+=" openssl-devel readline-devel zlib-devel"
 	PKG+=" boost-devel libcurl-devel yaml-cpp-devel"
-	PKG+=" emacs-nox gdb valgrind"
+	PKG+=" emacs-nox gdb valgrind screen"
 	sudo $PKGMGR update > /dev/null
 	sudo $PKGMGR install $PKG > /dev/null
     else
@@ -105,7 +105,7 @@ if [ -z "${OPT_RUBY}${OPT_BUILD}${OPT_REBUILD}${OPT_PUPPET}" ]; then
 	PKG+="build-essential cmake git wget"
 	PKG+=" libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev"
 	PKG+=" libcurl4-openssl-dev ruby-dev libreadline-dev"
-	PKG+=" emacs-nox gdb valgrind"
+	PKG+=" emacs-nox gdb valgrind screen"
 	sudo $PKGMGR update > /dev/null
 	sudo $PKGMGR install $PKG > /dev/null
     fi
