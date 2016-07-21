@@ -16,8 +16,10 @@ alias screen="/usr/bin/screen -dRR"
 # Prompt
 PS1="\h"
 if [ -f /etc/redhat-release ]; then
-    if [[ `grep Fedora /etc/redhat-release` ]]; then
+    if grep -q Fedora /etc/redhat-release; then
 	PS1="fedora"
+    elif grep -q CentOS /etc/redhat-release; then
+        PS1="centos"
     else
         PS1="redhat"
     fi
@@ -28,16 +30,16 @@ elif [ -f /etc/debian_version ]; then
 elif [ -f /etc/SUSE-release ]; then
     PS1="suse"
 fi
-if [[ "$USER" == "vagrant" ]]; then
+if [[ "$USER" = "vagrant" ]]; then
     PS1="vg:$PS1"
 fi
-if [[ "$TERM" == "screen" ]]; then
+if [[ "$TERM" = "screen" ]]; then
     PS1="sc:$PS1"
 fi
 export PS1="$PS1% "
 
 # OSX
-if [[ "`uname`" == "Darwin" ]]; then
+if [[ "`uname`" = "Darwin" ]]; then
   # alias override
   export LSCOLORS=ExGxBxDxCxEgEdxbxgxcxd
   alias ls="ls -G"
