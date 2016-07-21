@@ -188,7 +188,7 @@ if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" || -n "$OPT_ARCHIVE" ]]; then
     done
 
     # setup cmake
-    CMAKE_EXE=$(which cmake)
+    CMAKE_EXE=$(which cmake 2> /dev/null)
     CMAKE_NOW=""
     if [ -x "$CMAKE_EXE" ]; then
 	CMAKE_NOW=`${CMAKE_EXE} --version 2>/dev/null | awk '/ version / {print $3}'`
