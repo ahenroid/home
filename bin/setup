@@ -150,7 +150,8 @@ if [ -n "$OPT_RUBY" ]; then
 	fi
 	
 	echo "$ME: configuring Ruby $ver"
-	~/.rbenv/bin/rbenv global $ver || break
+	~/.rbenv/bin/rbenv global $ver
+	export PATH="~/.rbenv/shims:${PATH}"
 	for pkg in bundler rdoc; do
 	    if ! gem list --local | grep -q "$pkg"; then
 		echo "$ME: installing $pkg"
