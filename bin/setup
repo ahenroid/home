@@ -29,6 +29,8 @@ while true; do
 	-b=*|--build=*) OPT_BUILD=$VALS ;;
 	-x|--rebuild) OPT_REBUILD=$BUILD_DEFAULT ;;
 	-x=*|--rebuild=*) OPT_REBUILD=$VALS ;;
+	-a|--archive) OPT_ARCHIVE=$BUILD_DEFAULT ;;
+	-a=*|--archive=*) OPT_ARCHIVE=$VALS ;;
 	-u|--update) OPT_UPDATE=$BUILD_DEFAULT ;;
 	-u=*|--update=*) OPT_UPDATE=$VALS ;;
 	-p|--puppet) OPT_PUPPET=$PUPPET_DEFAULT ;;
@@ -43,6 +45,7 @@ while true; do
 	    echo " -r|--ruby[=VERSION,VERSION,...]         Build Ruby"
 	    echo " -b|--build[=facter|leatherman]          Build projects"
 	    echo " -x|--rebuild[=facter|leatherman]        Rebuild projects"
+	    echo " -a|--archive[=facter|leatherman]        Archive projects"
 	    echo " -u|--update[=facter|leatherman|puppet]  Update repositories"
 	    echo " -p|--puppet[=puppet-agent|puppetserver] Install Puppet"
 	    echo " -k|--keys[=USER@HOST]                   Fetch SSH keys"
@@ -84,7 +87,8 @@ if [ -n "$OPT_KEYS" ]; then
     done
 fi
 
-if [ -z "${OPT_RUBY}${OPT_BUILD}${OPT_REBUILD}${OPT_PUPPET}" ]; then
+OPTS="${OPT_RUBY}${OPT_BUILD}${OPT_REBUILD}${OPT_PUPPET}${OPT_ARCHIVE}"
+if [ -z "$OPTS" ]; then
     # update packages
     if [ -f /etc/redhat-release ]; then
 	if [ -x /usr/bin/dnf ]; then
@@ -165,7 +169,7 @@ if [ -n "$OPT_RUBY" ]; then
     ~/.rbenv/bin/rbenv global $VER0
 fi
 
-if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
+if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" || -n "$OPT_ARCHIVE" ]]; then
     if [ -z "$OPT_BUILD" ]; then
 	OPT_BUILD=$OPT_REBUILD
     fi
@@ -206,7 +210,8 @@ if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
 	    echo
 	fi
     fi
-    
+
+    # build repos
     for proj in $OPT_BUILD; do
 	if [[ "$proj" = "puppet" || "$proj" = "hiera" ]]; then
 	    continue
@@ -226,6 +231,21 @@ if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
 	    fi
 	fi
     done
+
+    # archive repos
+    if [ -n "$OPT_ARCHIVE" ]; then
+	for proj in $OPT_ARCHIVE; do
+	    if [ -d ~/proj/$proj ]; then
+		cd ~/proj
+		if [ ! -d archive ]; then mkdir archive; fi
+		echo -n "$ME: archiving $proj..."
+		ARCHIVE="archive/${proj}-`uname -s`-`uname -m`.tar.bz2"
+		ARCHIVE=`echo ${ARCHIVE} | sed -e 's/i686/i386/'`
+		tar cf - $proj | bzip2 -9 > ${ARCHIVE}
+		echo
+	    fi
+	done
+    fi
 fi
 
 if [ -n "$OPT_UPDATE" ]; then
