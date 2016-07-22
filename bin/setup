@@ -81,12 +81,13 @@ if [[ "$OPT_KEYS" = "-" ]]; then
 fi
     
 # fetch ssh keys
-if [ ! -d $HOME/.ssh ]; then mkdir $HOME/.ssh; fi
+if [ ! -d $HOME/.ssh ]; then mkdir -m 0700 $HOME/.ssh; fi
 for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
     if [ ! -f "$HOME/$f" ]; then
 	echo "$ME: fetching $f..."
 	scp -q -oStrictHostKeyChecking=no ${OPT_HOME}/$f $HOME/`dirname $f`/ || break
 	chmod 600 "$HOME/$f"
+	chown ${USER}.${USER} "$HOME/$f"
     fi
 done
 
