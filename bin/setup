@@ -4,18 +4,19 @@
 ME=`basename $0`
 
 # default settings
-BUILD_DEFAULT="leatherman facter puppet hiera"
-CMAKE_DEFAULT="3.6.0"
-RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
-PUPPET_DEFAULT="puppet-agent"
 HOME_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid"
+BUILD_DEFAULT="leatherman facter puppet hiera"
+PUPPET_DEFAULT="agent"
+RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
+CMAKE_DEFAULT="3.6.0"
+GETTEXT_DEFAULT="0.19.8"
 
 # rehome if necessary
 BASE=`dirname $0`
 if [[ "$BASE" = "./home/bin" || "$BASE" = "home/bin" ]]; then
-    if [[ ! -d ~/.git && -d ./home/.git ]]; then
+    if [[ ! -d $HOME/.git && -d ./home/.git ]]; then
 	echo "$ME: moved repository to $HOME"
-	mv ./home/* ./home/.[a-z]* . && rmdir ./home && exec ~/bin/$ME $*
+	mv ./home/* ./home/.[a-z]* . && rmdir ./home && exec $HOME/bin/$ME $*
     fi
 fi
 
@@ -23,6 +24,8 @@ fi
 while true; do
     VALS=`echo "$1" | awk -F= '{print $2}' | sed -e 's/,/ /g'`
     case "$1" in
+	-k|--keys) OPT_KEYS="-" ;;
+	-k=*|--keys=*) OPT_KEYS=$VALS ;;
 	-r|--ruby) OPT_RUBY=$RUBY_DEFAULT ;;
 	-r=*|--ruby=*) OPT_RUBY=$VALS ;;
 	-b|--build) OPT_BUILD=$BUILD_DEFAULT ;;
@@ -35,20 +38,18 @@ while true; do
 	-u=*|--update=*) OPT_UPDATE=$VALS ;;
 	-p|--puppet) OPT_PUPPET=$PUPPET_DEFAULT ;;
 	-p=*|--puppet=*) OPT_PUPPET=$VALS ;;
-	-k|--keys) OPT_KEYS=$HOME_DEFAULT ;;
-	-k=*|--keys=*) OPT_KEYS=$VALS ;;
 	-*)
 	    if [[ "$1" != "-h" && "$1" != "--help" ]]; then
 		echo "$ME: unrecognized option \`$1'"
 	    fi
 	    echo "Usage: $ME [OPTIONS]"
-	    echo " -r|--ruby[=VERSION,VERSION,...]         Build Ruby"
-	    echo " -b|--build[=facter|leatherman]          Build projects"
-	    echo " -x|--rebuild[=facter|leatherman]        Rebuild projects"
-	    echo " -a|--archive[=facter|leatherman]        Archive projects"
-	    echo " -u|--update[=facter|leatherman|puppet]  Update repositories"
-	    echo " -p|--puppet[=puppet-agent|puppetserver] Install Puppet"
-	    echo " -k|--keys[=USER@HOST]                   Fetch SSH keys"
+	    echo " -k|--keys=USER@HOST:/PATH             Fetch SSH keys"
+	    echo " -r|--ruby[=VERSION,VERSION,...]       Build Ruby"
+	    echo " -b|--build[=facter|leatherman]        Build projects"
+	    echo " -x|--rebuild[=facter|leatherman|...]  Rebuild projects"
+	    echo " -a|--archive[=facter|leatherman|...]  Archive projects"
+	    echo " -u|--update[=facter|leatherman|...]   Update repositories"
+	    echo " -p|--puppet[=agent|server]            Install Puppet"
 	    echo " -h|--help"
 	    exit 1
 	    ;;
@@ -58,47 +59,50 @@ while true; do
 done
 
 # check sudo permission
-if [[ $EUID -ne 0 ]]; then
-    echo "$ME: checking sudo permission..."
-    sudo echo -n
-fi
+if [[ $EUID -ne 0 ]]; then sudo echo -n; fi
 
 # determine remote HOME
-OPT_HOME=$HOME_DEFAULT
-if [ -n "$OPT_KEYS" ]; then
-    if [ -z "`echo "$OPT_KEYS" | awk -F@ '{print $2}'`" ]; then
-	OPT_HOME=`echo "$OPT_KEYS" | awk -F@ '{print $1}'`
-	OPT_HOME="`echo "$HOME_DEFAULT" | awk -F@ '{print $1}'`@${OPT_HOME}"
-    fi
-    if [ -z "`echo "$OPT_HOME" | awk -F:/ '{print $2}'`" ]; then
-	OPT_HOME="${OPT_HOME}:/Users/`echo \"$OPT_HOME\" | awk -F@ '{print $1}'`"
-    fi
+if [[ "$OPT_KEYS" != "-" ]]; then
+    OPT_HOME=$OPT_KEYS
+fi
+if [ -z "$OPT_HOME" ]; then
+    OPT_HOME=`sudo netstat -tapen 2> /dev/null | grep EST | grep ssh | \
+              awk 'NR==1{print $5}' | awk -F: '{print $1}'`
+fi
+if [ -z "`echo "$OPT_HOME" | awk -F@ '{print $2}'`" ]; then
+    OPT_HOME="`echo "$HOME_DEFAULT" | awk -F@ '{print $1}'`@${OPT_HOME}"
+fi
+if [ -z "`echo "$OPT_HOME" | awk -F:/ '{print $2}'`" ]; then
+    OPT_HOME="${OPT_HOME}:/Users/`echo \"$OPT_HOME\" | awk -F@ '{print $1}'`"
+fi
+if [[ "$OPT_KEYS" = "-" ]]; then
+    echo "$OPT_HOME"
+    exit 1
 fi
     
-# fetch ssh keys & .netrc
-if [ -n "$OPT_KEYS" ]; then
-    if [ ! -d ~/.ssh ]; then mkdir ~/.ssh; fi
-    for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
-	if [ ! -f "$HOME/$f" ]; then
-	    echo "$ME: fetching $f..."
-	    scp -q -oStrictHostKeyChecking=no ${OPT_HOME}/$f $HOME/`dirname $f`/ || break
-	    chmod 600 "$HOME/$f"
-	fi
-    done
+# fetch ssh keys
+if [ ! -d $HOME/.ssh ]; then mkdir $HOME/.ssh; fi
+for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
+    if [ ! -f "$HOME/$f" ]; then
+	echo "$ME: fetching $f..."
+	scp -q -oStrictHostKeyChecking=no ${OPT_HOME}/$f $HOME/`dirname $f`/ || break
+	chmod 600 "$HOME/$f"
+    fi
+done
+
+# determine package manager
+PKGMGR="apt-get -qqy"
+if [ -f /etc/redhat-release ]; then
+    if [ -x /usr/bin/dnf ]; then
+	PKGMGR="dnf -qy"
+    else
+	PKGMGR="yum -q -y"
+    fi
 fi
 
+# update packages
 OPTS="${OPT_RUBY}${OPT_BUILD}${OPT_REBUILD}${OPT_PUPPET}${OPT_ARCHIVE}"
 if [ -z "$OPTS" ]; then
-    # update packages
-    if [ -f /etc/redhat-release ]; then
-	if [ -x /usr/bin/dnf ]; then
-	    PKGMGR="dnf -qy"
-	else
-	    PKGMGR="yum -q -y"
-	fi
-    else
-	PKGMGR="apt-get -qqy"
-    fi
     echo -n "$ME: checking installed packages..."
     if [ -f /etc/redhat-release ]; then
 	# Fedora, Redhat
@@ -106,43 +110,41 @@ if [ -z "$OPTS" ]; then
 	PKG+=" openssl-devel readline-devel zlib-devel"
 	PKG+=" boost-devel libcurl-devel yaml-cpp-devel"
 	PKG+=" emacs-nox gdb valgrind screen"
-	sudo $PKGMGR update > /dev/null
-	sudo $PKGMGR install $PKG > /dev/null
     else
 	# Debian, Ubuntu
 	PKG+="build-essential git wget"
 	PKG+=" libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev"
 	PKG+=" libcurl4-openssl-dev ruby-dev libreadline-dev"
 	PKG+=" emacs-nox gdb valgrind screen"
-	sudo $PKGMGR update > /dev/null
-	sudo $PKGMGR install $PKG > /dev/null
     fi
+    sudo $PKGMGR update > /dev/null
+    sudo $PKGMGR install $PKG > /dev/null
     echo
 fi
 
 if [ -n "$OPT_RUBY" ]; then
     # install rbenv
-    if [ ! -d ~/.rbenv ]; then
+    if [ ! -d $HOME/.rbenv ]; then
 	echo "$ME: installing rbenv"
-	git clone -q https://github.com/rbenv/rbenv.git ~/.rbenv
-	git clone -q https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-	cd ~/.rbenv
+	git clone -q https://github.com/rbenv/rbenv.git $HOME/.rbenv
+	git clone -q https://github.com/rbenv/ruby-build.git $HOME/.rbenv/plugins/ruby-build
+	cd $HOME/.rbenv
 	src/configure > /dev/null && make -C src > /dev/null
     fi
 
     # build various Ruby versions
     for ver in $OPT_RUBY; do
-	if [ ! -d ~/.rbenv/versions/$ver ]; then
+	if [ ! -d $HOME/.rbenv/versions/$ver ]; then
 	    echo -n "$ME: installing Ruby $ver..."
 	    export RUBY_CONFIGURE_OPTS="--enable-shared"
-	    ~/.rbenv/bin/rbenv install $ver > /dev/null
+	    $HOME/.rbenv/bin/rbenv install $ver > /dev/null
 	    echo
 	fi
 	
-	if [ ! -d ~/proj/ruby/ruby-$ver ]; then
+	if [ ! -d $HOME/proj/ruby/ruby-$ver ]; then
 	    echo "$ME: installing Ruby $ver source"
-	    if [ ! -d ~/proj/ruby ]; then mkdir -p ~/proj/ruby; fi
-	    cd ~/proj/ruby
+	    if [ ! -d $HOME/proj/ruby ]; then mkdir -p $HOME/proj/ruby; fi
+	    cd $HOME/proj/ruby
 	    verbase=`echo $ver | awk -F. '{printf "%d.%d", $1, $2}'`
 	    wget -q https://cache.ruby-lang.org/pub/ruby/$verbase/ruby-$ver.tar.bz2 \
 		&& bunzip2 -c ruby-$ver.tar.bz2 | tar xf - \
@@ -150,16 +152,16 @@ if [ -n "$OPT_RUBY" ]; then
 	fi
 	
 	echo "$ME: configuring Ruby $ver"
-	~/.rbenv/bin/rbenv global $ver
-	export PATH="~/.rbenv/shims:${PATH}"
+	$HOME/.rbenv/bin/rbenv global $ver
+	export PATH="$HOME/.rbenv/shims:${PATH}"
 	for pkg in bundler rdoc; do
 	    if ! gem list --local | grep -q "$pkg"; then
 		echo "$ME: installing $pkg"
 		gem install $pkg > /dev/null
 	    fi
 	done
-	if [ -d ~/proj/puppet ]; then
-	    cd ~/proj/puppet
+	if [ -d $HOME/proj/puppet ]; then
+	    cd $HOME/proj/puppet
 	    bundle install > /dev/null
 	fi
     done
@@ -167,93 +169,118 @@ if [ -n "$OPT_RUBY" ]; then
     # configure to use first Ruby version
     VER0=`echo $OPT_RUBY | awk -F' ' '{print $1}'`
     echo "$ME: set to Ruby $VER0"
-    ~/.rbenv/bin/rbenv global $VER0
+    $HOME/.rbenv/bin/rbenv global $VER0
 fi
 
-if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" || -n "$OPT_ARCHIVE" ]]; then
+if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
     if [ -z "$OPT_BUILD" ]; then
 	OPT_BUILD=$OPT_REBUILD
     fi
 
     # setup repos
     for proj in $OPT_BUILD; do
-	if [ ! -d ~/proj/$proj ]; then
+	if [ ! -d $HOME/proj/$proj ]; then
 	    echo "$ME: cloning $proj"
-	    if [ ! -d ~/proj ]; then mkdir ~/proj; fi
-	    cd ~/proj
+	    if [ ! -d $HOME/proj ]; then mkdir $HOME/proj; fi
+	    cd $HOME/proj
 	    git clone -q https://github.com/ahenroid/$proj > /dev/null \
 		&& cd $proj \
 		&& git remote add upstream https://github.com/puppetlabs/$proj
 	fi
     done
 
-    # setup cmake
+    # check cmake
     CMAKE_EXE=$(which cmake 2> /dev/null)
     CMAKE_NOW=""
     if [ -x "$CMAKE_EXE" ]; then
 	CMAKE_NOW=`${CMAKE_EXE} --version 2>/dev/null | awk '/ version / {print $3}'`
     fi
     if [[ "${CMAKE_NOW}" < "${CMAKE_DEFAULT}" ]]; then
-	if [ ! -d ~/proj/cmake ]; then mkdir -p ~/proj/cmake; fi
+	if [ ! -d $HOME/proj/cmake ]; then mkdir -p $HOME/proj/cmake; fi
 	CMAKE_DIR="cmake-${CMAKE_DEFAULT}-`uname -s`-`uname -m`"
 	CMAKE_DIR=`echo ${CMAKE_DIR} | sed -e 's/i686/i386/'`
-	if [ ! -d ~/proj/cmake/${CMAKE_DIR} ]; then
+	if [ ! -d $HOME/proj/cmake/${CMAKE_DIR} ]; then
 	    echo -n "$ME: downloading cmake ${CMAKE_DEFAULT}..."
-	    cd ~/proj/cmake
-	    scp -q -oStrictHostKeyChecking=no ${OPT_HOME}/down/${CMAKE_DIR}.tar.gz /dev/stdout | tar xfz -
+	    cd $HOME/proj/cmake
+	    scp -q -oStrictHostKeyChecking=no ${OPT_HOME}/down/${CMAKE_DIR}.tar.gz /dev/stdout | tar xfz - || exit 1
 	    echo
 	fi
 
-	if [ -d ~/proj/cmake/${CMAKE_DIR} ]; then
-	    cd ~/proj/cmake/${CMAKE_DIR}
+	if [ -d $HOME/proj/cmake/${CMAKE_DIR} ]; then
+	    cd $HOME/proj/cmake/${CMAKE_DIR}
 	    echo -n "$ME: installing cmake ${CMAKE_DEFAULT}..."
 	    sudo find bin share/cmake-* -type f -exec install -D -o root -g root {} /usr/{} \;
 	    echo
 	fi
     fi
+    
+    # check gettext
+    if [[ "`uname -s`" = "Linux" ]]; then
+	if ! xgettext --add-location=file /dev/null 2> /dev/null; then
+	    if [ ! -d $HOME/proj/gettext ]; then mkdir -p $HOME/proj/gettext; fi
+	    GETTEXT_DIR="gettext-${GETTEXT_DEFAULT}"
+	    GETTEXT_PKG="${GETTEXT_DIR}-`uname -s`-`uname -m`.tar.gz"
+	    if [ ! -d $HOME/proj/gettext/${GETTEXT_DIR} ]; then
+		echo -n "$ME: downloading gettext ${GETTEXT_DEFAULT}..."
+		cd $HOME/proj/gettext
+		scp -q -oStrictHostKeyChecking=no ${OPT_HOME}/down/${GETTEXT_PKG} /dev/stdout | tar xfz - || exit 1
+		echo
+	    fi
+	    
+	    if [ -d $HOME/proj/gettext/${GETTEXT_DIR} ]; then
+		echo -n "$ME: installing gettext ${GETTEXT_DEFAULT}..."
+		cd $HOME/proj/gettext/${GETTEXT_DIR}
+		sudo make install > /dev/null
+		sudo mv /usr/lib/libgettext* /usr/lib64/
+		echo
+	    fi
+	fi
+    fi
 
     # build repos
     for proj in $OPT_BUILD; do
-	if [[ "$proj" = "puppet" || "$proj" = "hiera" ]]; then
-	    continue
-	fi
-
-	if [ -n "$OPT_REBUILD" ]; then
-	    rm -rf ~/proj/$proj/build
-	fi
-	
-	if [ ! -d ~/proj/$proj/build ]; then
-	    echo "$ME: building $proj..."
-	    mkdir ~/proj/$proj/build
-	    cd ~/proj/$proj/build
-	    cmake -DCMAKE_BUILD_TYPE=Debug .. > /dev/null && make
-	    if [[ "$proj" = "leatherman" ]]; then
-		sudo make install > /dev/null
+	if [ -f $HOME/proj/$proj/CMakeLists.txt ]; then
+	    if [ -n "$OPT_REBUILD" ]; then rm -rf $HOME/proj/$proj/build; fi
+	    if [ ! -d $HOME/proj/$proj/build ]; then
+		echo "$ME: building $proj..."
+		CMAKE_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
+		if [ -f /opt/pl-build-tools/lib/libboost_container.so ]; then
+		    CMAKE_FLAGS+=" -DBOOST_ROOT=/opt/pl-build-tools"
+		fi
+		if [ -f /opt/pl-build-tools/lib/libyaml-cpp.so ]; then
+		    CMAKE_FLAGS+=" -DYAMLCPP_LIBRARY=/opt/pl-build-tools/lib/libyaml-cpp.so"
+		    CMAKE_FLAGS+=" -DYAMLCPP_INCLUDE_DIR=/opt/pl-build-tools/include/yaml-cpp"
+		fi
+		mkdir $HOME/proj/$proj/build
+		cd $HOME/proj/$proj/build
+		cmake ${CMAKE_FLAGS} .. > /dev/null && make
+		if [[ "$proj" = "leatherman" ]]; then
+		    sudo make install > /dev/null
+		fi
 	    fi
 	fi
     done
+fi
 
-    # archive repos
-    if [ -n "$OPT_ARCHIVE" ]; then
-	for proj in $OPT_ARCHIVE; do
-	    if [ -d ~/proj/$proj ]; then
-		cd ~/proj
-		if [ ! -d archive ]; then mkdir archive; fi
-		echo -n "$ME: archiving $proj..."
-		ARCHIVE="archive/${proj}-`uname -s`-`uname -m`.tar.bz2"
-		ARCHIVE=`echo ${ARCHIVE} | sed -e 's/i686/i386/'`
-		tar cf - $proj | bzip2 -9 > ${ARCHIVE}
-		echo
-	    fi
-	done
-    fi
+if [ -n "$OPT_ARCHIVE" ]; then
+    for proj in $OPT_ARCHIVE; do
+	if [ -d $HOME/proj/$proj ]; then
+	    cd $HOME/proj
+	    if [ ! -d archive ]; then mkdir archive; fi
+	    echo -n "$ME: archiving $proj..."
+	    ARCHIVE="archive/${proj}-`uname -s`-`uname -m`.tar.bz2"
+	    ARCHIVE=`echo ${ARCHIVE} | sed -e 's/i686/i386/'`
+	    tar cf - $proj | bzip2 -9 > ${ARCHIVE}
+	    echo
+	fi
+    done
 fi
 
 if [ -n "$OPT_UPDATE" ]; then
     for proj in $OPT_UPDATE; do
-	if [ -d ~/proj/$proj ]; then
+	if [ -d $HOME/proj/$proj ]; then
 	    echo "$ME: updating $proj"
-	    cd ~/proj/$proj
+	    cd $HOME/proj/$proj
 	    git fetch upstream \
 		&& git checkout master \
 		&& git merge upstream/master \
@@ -269,9 +296,6 @@ if [[ -n "$OPT_PUPPET" && ! -d "/opt/puppetlabs/bin" ]]; then
 		PKG="puppetlabs-release-pc1-${rel}.deb"
 		CMD="wget -q https://apt.puppetlabs.com/${PKG}"
 		CMD+=";sudo dpkg -i ${PKG}"
-		CMD+=";rm -f ${PKG}"
-		CMD+=";sudo apt-get update"
-		CMD+=";sudo apt-get install $OPT_PUPPET"
 		break
 	    fi
 	done
@@ -281,17 +305,11 @@ if [[ -n "$OPT_PUPPET" && ! -d "/opt/puppetlabs/bin" ]]; then
 		PKG="puppetlabs-release-pc1-fedora-${rel}.noarch.rpm"
 		CMD="wget -q https://yum.puppetlabs.com/${PKG}"
 		CMD+=";sudo rpm -Uvh ${PKG}"
-		CMD+=";rm -f ${PKG}"
-		CMD+=";sudo dnf update"
-		CMD+=";sudo dnf install $OPT_PUPPET"
 		break
 	    elif grep -q "Linux release ${rel}\." /etc/redhat-release; then
 		PKG="puppetlabs-release-pc1-el-${rel}.noarch.rpm"
 		CMD="wget -q https://yum.puppetlabs.com/${PKG}"
 		CMD+=";sudo rpm -Uvh ${PKG}"
-		CMD+=";rm -f ${PKG}"
-		CMD+=";sudo yum update"
-		CMD+=";sudo yum install $OPT_PUPPET"
 		break
 	    fi
 	done
@@ -299,6 +317,15 @@ if [[ -n "$OPT_PUPPET" && ! -d "/opt/puppetlabs/bin" ]]; then
 
     if [ -n "$CMD" ]; then
 	echo "$ME: installing Puppet ($OPT_PUPPET)"
+	CMD+=";rm -f ${PKG}"
+	CMD+=";sudo $PKGMGR update"
+	for pkg in $OPT_PUPPET; do
+	    case "$pkg" in
+		agent) pkg=puppet-agent ;;
+		server) pkg=puppetserver ;;
+	    esac
+	    CMD+=";sudo $PKGMGR install $pkg"
+	done
 	eval $CMD
     fi
 fi
