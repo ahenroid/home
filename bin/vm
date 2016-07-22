@@ -1,0 +1,46 @@
+#!/bin/sh
+# -*- mode: Shell-script;-*-
+
+ME=`basename $0`
+
+VMDIR="$HOME/vm"
+
+SSH_OPTS="-q -i $HOME/.ssh/id_rsa"
+SSH_OPTS+=" -o UserKnownHostsFile=/dev/null"
+SSH_OPTS+=" -o StrictHostKeyChecking=no"
+
+while true; do
+    VALS=`echo "$1" | awk -F= '{print $2}' | sed -e 's/,/ /g'`
+    case "$1" in
+	debian) exec ssh ${SSH_OPTS} debian@10.32.171.183 ;;
+	fedora) exec ssh ${SSH_OPTS} fedora@10.32.164.48 ;;
+	centos) exec ssh ${SSH_OPTS} centos@10.32.173.7 ;;
+	-*|"")
+	    if [[ "$1" != "" && "$1" != "-h" && "$1" != "--help" ]]; then
+		echo "$ME: unrecognized option \`$1'"
+	    fi
+	    echo "Usage: $ME [OPTIONS] [VM]"
+	    echo " -h|--help"
+	    if [[ "$1" = "" ]]; then
+		echo " VMs:"
+		echo "  debian (slice)"
+		echo "  fedora (slice)"
+		echo "  centos (slice)"
+		for x in `ls $HOME/vm`; do
+		    if [ -f "$VMDIR/$x/Vagrantfile" ]; then
+			echo "  $x (vagrant)"
+		    fi
+		done
+	    fi
+	    exit 1
+	    ;;
+	*)
+	    if [ -f "$VMDIR/$1/Vagrantfile" ]; then
+		cd "$VMDIR/$1"
+		exec vagrant ssh
+	    fi
+	    echo "$ME: no matching VM \`$1'"
+	    exit 1
+	    ;;
+    esac
+done
