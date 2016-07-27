@@ -5,7 +5,7 @@ ME=`basename $0`
 
 # default settings
 HOME_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid"
-BUILD_DEFAULT="leatherman facter puppet hiera"
+BUILD_DEFAULT="leatherman facter puppet hiera puppet-agent"
 PUPPET_DEFAULT="agent"
 RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
 CMAKE_DEFAULT="3.6.0"
@@ -102,7 +102,7 @@ if [ -f /etc/redhat-release ]; then
 fi
 
 # update packages
-OPTS="${OPT_RUBY}${OPT_BUILD}${OPT_REBUILD}${OPT_PUPPET}${OPT_ARCHIVE}"
+OPTS="${OPT_RUBY}${OPT_BUILD}${OPT_UPDATE}${OPT_REBUILD}${OPT_PUPPET}${OPT_ARCHIVE}"
 if [ -z "$OPTS" ]; then
     echo -n "$ME: checking installed packages..."
     if [ -f /etc/redhat-release ]; then
@@ -279,6 +279,17 @@ fi
 
 if [ -n "$OPT_UPDATE" ]; then
     for proj in $OPT_UPDATE; do
+	# setup repo
+	if [ ! -d $HOME/proj/$proj ]; then
+	    echo "$ME: cloning $proj"
+	    if [ ! -d $HOME/proj ]; then mkdir $HOME/proj; fi
+	    cd $HOME/proj
+	    git clone -q https://github.com/ahenroid/$proj > /dev/null \
+		&& cd $proj \
+		&& git remote add upstream https://github.com/puppetlabs/$proj
+	fi
+
+	# update repo
 	if [ -d $HOME/proj/$proj ]; then
 	    echo "$ME: updating $proj"
 	    cd $HOME/proj/$proj
