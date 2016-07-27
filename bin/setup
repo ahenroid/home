@@ -216,7 +216,7 @@ if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
     fi
     
     # check gettext
-    if [[ "`uname -s`" = "Linux" ]]; then
+    if [ -f /etc/redhat-release ] && grep -q CentOS /etc/redhat-release; then
 	if ! xgettext --add-location=file /dev/null 2> /dev/null; then
 	    if [ ! -d $HOME/proj/gettext ]; then mkdir -p $HOME/proj/gettext; fi
 	    GETTEXT_DIR="gettext-${GETTEXT_DEFAULT}"
