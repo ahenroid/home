@@ -11,11 +11,7 @@ bundle exec rspec spec[/.../*.rb]
 bundle exec rake spec [TEST=spec/.../...rb]
 bundle exec rake rubocop [commits -T]
 
-bundle exec rake ci:test:aio SHA=[...] SUITE_COMMIT=[...] TEST_TARGET=[ubuntu1404-64a] TEST=[tests/facts/ubuntu.rb] OPTIONS="--preserve-hosts-always"
-
 bundle exec build puppet-agent debian-8-amd64
 
-bundle exec beaker --hosts ... --tests ... --preserve-hosts-always --debug --no-provision
-
-
+// see beaker.txt (bundle exec rake ci:test:aio ... | bundle exec beaker ...)
 
