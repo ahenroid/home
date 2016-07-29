@@ -3,6 +3,7 @@
 
 ME=`basename $0`
 
+
 VMDIR="$HOME/vm"
 
 SSH_OPTS="-q -i $HOME/.ssh/id_rsa"
