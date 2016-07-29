@@ -6,6 +6,8 @@ ME=`basename $0`
 
 VMDIR="$HOME/vm"
 
+
+
 SSH_OPTS="-q -i $HOME/.ssh/id_rsa"
 SSH_OPTS+=" -o UserKnownHostsFile=/dev/null"
 SSH_OPTS+=" -o StrictHostKeyChecking=no"
