@@ -293,10 +293,14 @@ if [ -n "$OPT_UPDATE" ]; then
 	if [ -d $HOME/proj/$proj ]; then
 	    echo "$ME: updating $proj"
 	    cd $HOME/proj/$proj
+	    BRANCH=`git rev-parse --abbrev-ref HEAD`
 	    git fetch upstream \
 		&& git checkout master \
 		&& git merge upstream/master \
 		&& git push origin master
+	    if [[ "$BRANCH" != "master" ]]; then
+		git checkout "$BRANCH"
+	    fi
 	fi
     done
 fi
