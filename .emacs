@@ -11,6 +11,8 @@
 
 (setq inhibit-startup-message t)
 
+(when (fboundp 'electric-indent-mode) (electric-indent-mode -1))
+
 ;(cua-mode t)
 ;(setq cua-auto-tabify-rectangles nil) ;; Don't tabify after rectangle commands
 ;(transient-mark-mode 1) ;; No region when it is not highlighted
