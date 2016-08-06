@@ -5,7 +5,7 @@ ME=`basename $0`
 
 # default settings
 HOME_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid"
-BUILD_DEFAULT="leatherman facter puppet hiera puppet-agent"
+BUILD_DEFAULT="leatherman cpp-hocon facter puppet puppet-agent hiera"
 PUPPET_DEFAULT="agent"
 RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
 CMAKE_DEFAULT="3.6.0"
@@ -32,8 +32,6 @@ while true; do
 	-b=*|--build=*) OPT_BUILD=$VALS ;;
 	-x|--rebuild) OPT_REBUILD=$BUILD_DEFAULT ;;
 	-x=*|--rebuild=*) OPT_REBUILD=$VALS ;;
-	-a|--archive) OPT_ARCHIVE=$BUILD_DEFAULT ;;
-	-a=*|--archive=*) OPT_ARCHIVE=$VALS ;;
 	-u|--update) OPT_UPDATE=$BUILD_DEFAULT ;;
 	-u=*|--update=*) OPT_UPDATE=$VALS ;;
 	-p|--puppet) OPT_PUPPET=$PUPPET_DEFAULT ;;
@@ -47,7 +45,6 @@ while true; do
 	    echo " -r|--ruby[=VERSION,VERSION,...]       Build Ruby"
 	    echo " -b|--build[=facter|leatherman]        Build projects"
 	    echo " -x|--rebuild[=facter|leatherman|...]  Rebuild projects"
-	    echo " -a|--archive[=facter|leatherman|...]  Archive projects"
 	    echo " -u|--update[=facter|leatherman|...]   Update repositories"
 	    echo " -p|--puppet[=agent|server]            Install Puppet"
 	    echo " -h|--help"
@@ -102,7 +99,7 @@ if [ -f /etc/redhat-release ]; then
 fi
 
 # update packages
-OPTS="${OPT_RUBY}${OPT_BUILD}${OPT_UPDATE}${OPT_REBUILD}${OPT_PUPPET}${OPT_ARCHIVE}"
+OPTS="${OPT_RUBY}${OPT_BUILD}${OPT_UPDATE}${OPT_REBUILD}${OPT_PUPPET}"
 if [ -z "$OPTS" ]; then
     echo -n "$ME: checking installed packages..."
     if [ -f /etc/redhat-release ]; then
@@ -254,25 +251,11 @@ if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
 		fi
 		mkdir $HOME/proj/$proj/build
 		cd $HOME/proj/$proj/build
-		cmake ${CMAKE_FLAGS} .. > /dev/null && make
-		if [[ "$proj" = "leatherman" ]]; then
+		cmake ${CMAKE_FLAGS} .. > /dev/null && make -j3
+		if [[ "$proj" = "leatherman" || "$proj" = "cpp-hocon" ]]; then
 		    sudo make install > /dev/null
 		fi
 	    fi
-	fi
-    done
-fi
-
-if [ -n "$OPT_ARCHIVE" ]; then
-    for proj in $OPT_ARCHIVE; do
-	if [ -d $HOME/proj/$proj ]; then
-	    cd $HOME/proj
-	    if [ ! -d archive ]; then mkdir archive; fi
-	    echo -n "$ME: archiving $proj..."
-	    ARCHIVE="archive/${proj}-`uname -s`-`uname -m`.tar.bz2"
-	    ARCHIVE=`echo ${ARCHIVE} | sed -e 's/i686/i386/'`
-	    tar cf - $proj | bzip2 -9 > ${ARCHIVE}
-	    echo
 	fi
     done
 fi
