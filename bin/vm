@@ -1,49 +1,59 @@
-#!/bin/sh
+#!/bin/bash
 # -*- mode: Shell-script;-*-
 
 ME=`basename $0`
 
-
 VMDIR="$HOME/vm"
-
-
 
 SSH_OPTS="-q -i $HOME/.ssh/id_rsa"
 SSH_OPTS+=" -o UserKnownHostsFile=/dev/null"
 SSH_OPTS+=" -o StrictHostKeyChecking=no"
 
-while true; do
-    VALS=`echo "$1" | awk -F= '{print $2}' | sed -e 's/,/ /g'`
-    case "$1" in
-	debian) exec ssh ${SSH_OPTS} debian@10.32.171.183 ;;
-	fedora) exec ssh ${SSH_OPTS} fedora@10.32.164.48 ;;
-	centos) exec ssh ${SSH_OPTS} centos@10.32.173.7 ;;
-	-*|"")
-	    if [[ "$1" != "" && "$1" != "-h" && "$1" != "--help" ]]; then
-		echo "$ME: unrecognized option \`$1'"
-	    fi
-	    echo "Usage: $ME [OPTIONS] [VM]"
-	    echo " -h|--help"
-	    if [[ "$1" = "" ]]; then
-		echo " VMs:"
-		echo "  debian (slice)"
-		echo "  fedora (slice)"
-		echo "  centos (slice)"
-		for x in `ls $HOME/vm`; do
-		    if [ -f "$VMDIR/$x/Vagrantfile" ]; then
-			echo "  $x (vagrant)"
-		    fi
-		done
-	    fi
-	    exit 1
-	    ;;
-	*)
-	    if [ -f "$VMDIR/$1/Vagrantfile" ]; then
-		cd "$VMDIR/$1"
-		exec vagrant ssh
-	    fi
+vms=""
+if [ -d "$HOME/vm" ]; then
+    for x in `ls "$HOME/vm"`; do
+	if [ -f "$VMDIR/$x/Vagrantfile" ]; then vms+="$x "; fi
+    done
+fi
+
+case "$1" in
+    debian) exec ssh ${SSH_OPTS} debian@10.32.171.183; exit 1 ;;
+    fedora) exec ssh ${SSH_OPTS} fedora@10.32.164.48; exit 1 ;;
+    centos) exec ssh ${SSH_OPTS} centos@10.32.173.7; exit 1 ;;
+    -i|--init)
+        echo "alias debian='ssh $SSH_OPTS debian@10.32.171.183'"
+        echo "alias fedora='ssh $SSH_OPTS fedora@10.32.164.48'"
+        echo "alias centos='ssh $SSH_OPTS centos@10.32.173.7'"
+        for x in $vms; do
+	    echo "alias $x='cd \"$VMDIR/$x\"; vagrant ssh'"
+	done
+        echo "alias deb=debian8"
+        ;;
+    "")
+	echo "VMs:"
+	echo "  debian (slice)"
+	echo "  fedora (slice)"
+	echo "  centos (slice)"
+        for x in $vms; do
+	    echo "  $x (vagrant)"
+	done
+        ;;
+    -*)
+	if [[ "$1" != "-h" && "$1" != "--help" ]]; then
+	    echo "$ME: unrecognized option \`$1'"
+	fi
+	echo "Usage: $ME [OPTIONS] [VM]"
+        echo "Options:"
+	echo "  -i|--init"
+	echo "  -h|--help"
+	;;
+    *)
+	if [ -f "$VMDIR/$1/Vagrantfile" ]; then
+	    cd "$VMDIR/$1"
+	    exec vagrant ssh
+	else
 	    echo "$ME: no matching VM \`$1'"
-	    exit 1
-	    ;;
-    esac
-done
+        fi
+	exit 1
+	;;
+esac
