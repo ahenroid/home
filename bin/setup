@@ -13,7 +13,7 @@ GETTEXT_DEFAULT="0.19.8"
 GITHUB_HOME="https://github.com/ahenroid"
 GITHUB_PUPPET="https://github.com/puppetlabs"
 
-# rehome if necessary
+# rehome script if necessary
 BASE=`dirname $0`
 if [[ "$BASE" = "./home/bin" || "$BASE" = "home/bin" ]]; then
     if [[ ! -d $HOME/.git && -d ./home/.git ]]; then
@@ -24,52 +24,96 @@ if [[ "$BASE" = "./home/bin" || "$BASE" = "home/bin" ]]; then
     fi
 fi
 
-# parse command line options
+#
+# Parse command line options
+#
 while true; do
     VALS=`echo "$1" | awk -F= '{print $2}' | sed -e 's/,/ /g'`
     case "$1" in
-        -k|--keys) OPT_KEYS="-" ;;
+        -k|--keys|-k-) OPT_KEYS="-" ;;
         -k=*|--keys=*) OPT_KEYS=$VALS ;;
+
         -r|--ruby) OPT_RUBY=$RUBY_DEFAULT ;;
+        -r-) OPT_RUBY="-" ;;
         -r=*|--ruby=*) OPT_RUBY=$VALS ;;
-        -f|--fetch) OPT_FETCH=. ;;
-        -f=all|--fetch=all) OPT_FETCH=$BUILD_DEFAULT ;;
+
+        -f|--fetch) OPT_FETCH="." ;;
+        -f-) OPT_FETCH="-" ;;
+        -f\*|-f=\*|--fetch=\*) OPT_FETCH=$BUILD_DEFAULT ;;
         -f=*|--fetch=*) OPT_FETCH=$VALS ;;
-        -b|--build) OPT_BUILD=. ;;
-        -b=all|--build=all) OPT_BUILD=$BUILD_DEFAULT ;;
+
+        -b|--build) OPT_BUILD="." ;;
+        -b-) OPT_BUILD="-" ;;
+        -b\*|-b=\*|--build=\*) OPT_BUILD=$BUILD_DEFAULT ;;
         -b=*|--build=*) OPT_BUILD=$VALS ;;
-        -x|--rebuild) OPT_REBUILD=. ;;
-        -x=all|--rebuild=all) OPT_REBUILD=$BUILD_DEFAULT ;;
+
+        -x|--rebuild) OPT_REBUILD="." ;;
+        -x-) OPT_REBUILD="-" ;;
+        -x\*|-x=\*|--rebuild=\*) OPT_REBUILD=$BUILD_DEFAULT ;;
         -x=*|--rebuild=*) OPT_REBUILD=$VALS ;;
-        -u|--update) OPT_UPDATE=. ;;
-        -u=all|--update=all) OPT_UPDATE=$BUILD_DEFAULT ;;
+
+        -u|--update) OPT_UPDATE="." ;;
+        -u-) OPT_UPDATE="-" ;;
+        -u\*|-u=\*|--update=\*) OPT_UPDATE=$BUILD_DEFAULT ;;
         -u=*|--update=*) OPT_UPDATE=$VALS ;;
+
+        -j|--jbuild) OPT_JBUILD="." ;;
+        -j-) OPT_JBUILD="-" ;;
+        -j=*|--jbuild=*) OPT_JBUILD=$VALS ;;
+
+        -b|--btest) OPT_BTEST="." ;;
+        -b-) OPT_BTEST="-" ;;
+        -b=*|--btest=*) OPT_BTEST=$VALS ;;
+
         -p|--puppet) OPT_PUPPET=$PUPPET_DEFAULT ;;
         -p=*|--puppet=*) OPT_PUPPET=$VALS ;;
+
+        -q|--quiet) OPT_QUIET="." ;;
+        -v|--verbose) OPT_VERBOSE="." ;;
+
         -*)
             if [[ "$1" != "-h" && "$1" != "--help" ]]; then
-                echo "$ME: unrecognized option \`$1'"
+                echo "$ME: unrecognized option or format \`$1'"
             fi
             echo "Usage: $ME [OPTIONS]"
-            echo " -k|--keys=USER@HOST:/PATH             Fetch SSH keys"
-            echo " -r|--ruby[=VERSION,VERSION,...]       Build Ruby"
-            echo " -f|--fetch[=facter|leatherman]        Fetch projects"
-            echo " -b|--build[=facter|leatherman]        Build projects"
-            echo " -x|--rebuild[=facter|leatherman|...]  Rebuild projects"
-            echo " -u|--update[=facter|leatherman|...]   Update repositories"
-            echo " -p|--puppet[=agent|server]            Install Puppet"
+            echo " -k|--keys=USER@HOST:/PATH          Fetch SSH keys"
+            echo " -r|--ruby[=VERSION,VERSION,...]    Build ruby"
+            echo " -f|--fetch[=PROJ|PATH][:BRANCH]    Fetch projects"
+            echo " -b|--build[=PROJ|PATH][:BRANCH]    Build projects"
+            echo " -x|--rebuild[=PROJ|PATH][:BRANCH]  Rebuild projects"
+            echo " -u|--update[=PROJ|PATH][:BRANCH]   Update repositories"
+            echo " -j|--jbuild[=PROJ|PATH][:BRANCH]   Init puppet-agent build"
+            echo " -t|--test[=PROJ|PATH][:BRANCH]     Init beaker tests"
+            echo " -p|--puppet[=agent|server]         Install puppet"
+            echo " -v|--verbose"
+            echo " -q|--quiet"
             echo " -h|--help"
+            if [[ "$1" = "-h" || "$1" = "--help" ]]; then
+                echo
+                echo "Examples:"
+                echo "  $ME -k                # show home location"
+                echo "  $ME -r-               # list available ruby versions"
+                echo "  $ME -r=2.3.1          # install ruby version"
+                echo "  $ME -f=facter:-       # list facter branches"
+                echo "  $ME -f=facter:master  # fetch facter master"
+                echo "  $ME -b=facter:master  # build facter master"
+                echo "  $ME -x=facter:master  # rebuild facter master"
+                echo "  $ME -u=facter         # update facter repo"
+            fi
             exit 1
             ;;
         *) break ;;
     esac
+    OPTS+="$1"
     shift
 done
 
 # check sudo permission
 if [[ $EUID -ne 0 ]]; then sudo echo -n; fi
 
-# determine remote HOME
+#
+# Determine remote HOME
+#
 if [[ "$OPT_KEYS" != "-" ]]; then
     OPT_HOME=$OPT_KEYS
 fi
@@ -87,8 +131,10 @@ if [[ "$OPT_KEYS" = "-" ]]; then
     echo "$OPT_HOME"
     exit 1
 fi
-    
-# fetch ssh keys
+
+#
+# Fetch SSH keys
+#
 if [ ! -d "$HOME/.ssh" ]; then mkdir -m 0700 "$HOME/.ssh"; fi
 for f in .ssh/id_rsa .ssh/config .ssh/id_rsa-acceptance .netrc; do
     if [ ! -f "$HOME/$f" ]; then
@@ -109,8 +155,9 @@ if [ -f /etc/redhat-release ]; then
     fi
 fi
 
-# update packages
-OPTS="${OPT_RUBY}${OPT_FETCH}${OPT_BUILD}${OPT_UPDATE}${OPT_REBUILD}${OPT_PUPPET}"
+#
+# Update packages
+#
 if [ -z "$OPTS" ]; then
     echo -n "$ME: checking installed packages..."
     if [ -f /etc/redhat-release ]; then
@@ -131,7 +178,25 @@ if [ -z "$OPTS" ]; then
     echo
 fi
 
-if [ -n "$OPT_RUBY" ]; then
+#
+# Install Ruby versions
+#
+for ruby in $OPT_RUBY; do
+    # display available versions
+    if [[ "$ruby" = "-" ]]; then
+        if [ -d "$HOME/.rbenv/versions" ]; then
+            ver0=`cat "$HOME/.rbenv/version"`
+            for ver in `ls "$HOME/.rbenv/versions"`; do
+                if [[ "$ver" = "$ver0" ]]; then
+                    echo "* $ver"
+                else
+                    echo "  $ver"
+                fi
+            done
+        fi
+        continue
+    fi
+
     # install rbenv
     if [ ! -d "$HOME/.rbenv" ]; then
         echo "$ME: installing rbenv"
@@ -143,49 +208,77 @@ if [ -n "$OPT_RUBY" ]; then
         popd > /dev/null
     fi
 
-    # build various Ruby versions
-    for ver in $OPT_RUBY; do
-        if [ ! -d "$HOME/.rbenv/versions/$ver" ]; then
-            echo -n "$ME: installing Ruby $ver..."
-            export RUBY_CONFIGURE_OPTS="--enable-shared"
-            "$HOME/.rbenv/bin/rbenv" install $ver > /dev/null || exit $?
-            echo
-        fi
-        
-        if [ ! -d "$HOME/proj/ruby/ruby-$ver" ]; then
-            echo "$ME: installing Ruby $ver source"
-            if [ ! -d "$HOME/proj/ruby" ]; then mkdir -p "$HOME/proj/ruby"; fi
-            pushd "$HOME/proj/ruby" > /dev/null
-            verbase=`echo $ver | awk -F. '{printf "%d.%d", $1, $2}'`
-            wget -q https://cache.ruby-lang.org/pub/ruby/$verbase/ruby-$ver.tar.bz2 || exit $?
-            bunzip2 -c ruby-$ver.tar.bz2 | tar xf - || exit $?
-            rm ruby-$ver.tar.bz2
-            popd > /dev/null
-        fi
-        
-        echo "$ME: configuring Ruby $ver"
-        "$HOME/.rbenv/bin/rbenv" global $ver || exit $?
-        export PATH="$HOME/.rbenv/shims:${PATH}"
-        for pkg in bundler rdoc; do
-            if ! gem list --local | grep -q "$pkg"; then
-                echo "$ME: installing $pkg"
-                gem install $pkg > /dev/null || exit $?
-            fi
-        done
-        if [ -d "$HOME/proj/puppet" ]; then
-            pushd "$HOME/proj/puppet" > /dev/null
-            bundle install > /dev/null || exit $?
-            popd > /dev/null
+    # build Ruby version
+    if [ ! -d "$HOME/.rbenv/versions/$ruby" ]; then
+        echo -n "$ME: installing Ruby $ruby..."
+        export RUBY_CONFIGURE_OPTS="--enable-shared"
+        "$HOME/.rbenv/bin/rbenv" install $ruby > /dev/null || exit $?
+        echo
+    fi
+    
+    if [ ! -d "$HOME/proj/ruby/ruby-$ruby" ]; then
+        echo "$ME: installing Ruby $ruby source"
+        if [ ! -d "$HOME/proj/ruby" ]; then mkdir -p "$HOME/proj/ruby"; fi
+        pushd "$HOME/proj/ruby" > /dev/null
+        verbase=`echo $ruby | awk -F. '{printf "%d.%d", $1, $2}'`
+        wget -q https://cache.ruby-lang.org/pub/ruby/$verbase/ruby-$ruby.tar.bz2 || exit $?
+        bunzip2 -c ruby-$ruby.tar.bz2 | tar xf - || exit $?
+        rm ruby-$ruby.tar.bz2
+        popd > /dev/null
+    fi
+    
+    echo "$ME: configuring Ruby $ruby"
+    "$HOME/.rbenv/bin/rbenv" global $ruby || exit $?
+    export PATH="$HOME/.rbenv/shims:${PATH}"
+    for pkg in bundler rdoc; do
+        if ! gem list --local | grep -q "$pkg"; then
+            echo "$ME: installing $pkg"
+            gem install $pkg > /dev/null || exit $?
         fi
     done
+    if [ -d "$HOME/proj/puppet" ]; then
+        pushd "$HOME/proj/puppet" > /dev/null
+        bundle install > /dev/null || exit $?
+        popd > /dev/null
+    fi
+    
+    # configure Ruby
+    if [[ "`echo $OPT_RUBY | awk -F' ' '{print $1}'`" = "$ruby" ]]; then
+        echo "$ME: set to Ruby $VER0"
+        "$HOME/.rbenv/bin/rbenv" global $VER0
+    fi
+done
 
-    # configure to use first Ruby version
-    VER0=`echo $OPT_RUBY | awk -F' ' '{print $1}'`
-    echo "$ME: set to Ruby $VER0"
-    "$HOME/.rbenv/bin/rbenv" global $VER0
-fi
-
+#
+# Fetch, build, rebuild, or update repo
+#
 for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
+    # display available projects
+    if [[ "$proj" = "-" || "$proj" = "-:-" ]]; then
+        for p in $BUILD_DEFAULT; do
+            if [ -d "$HOME/proj/$p/.git" ]; then
+                echo "* $p"
+            else
+                echo "  $p"
+            fi
+        done
+        for p in `ls "$HOME/proj"`; do
+            if [ -d "$HOME/proj/$p/.git" ]; then
+                found=""
+                for p2 in $BUILD_DEFAULT; do
+                    if [[ "$p2" = "$p" ]]; then
+                        found="YES"
+                        break
+                    fi
+                done
+                if [ -z "$found" ]; then
+                    echo "+ $p"
+                fi
+            fi
+        done
+        continue
+    fi
+
     # determine repo path
     projbranch=`echo "$proj" | awk -F: '{print $2}'`
     proj=`echo "$proj" | awk -F: '{print $1}'`
@@ -201,9 +294,6 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
     fi
     proj=`basename "$projdir"`
     projdir=`dirname "$projdir"`
-    if [[ -z "$projbranch" ]] && [ -d "$projdir/$proj/.git" ]; then
-        projbranch=`git --git-dir="$projdir/$proj/.git" rev-parse --abbrev-ref HEAD`
-    fi
 
     # setup repo
     if [ ! -d "$projdir/$proj" ]; then
@@ -216,6 +306,22 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
         cd $proj || exit $?
         git remote add upstream "$GITHUB_PUPPET/$proj" || exit $?
         popd > /dev/null
+    fi
+
+    # display available branches
+    if [[ "$projbranch" = "-" ]]; then
+        git --git-dir="$projdir/$proj/.git" branch \
+            | while read line; do
+                  active=""
+                  branch=`echo "$line" | awk '{print $1}'`
+                  if [[ "$branch" = "*" ]]; then
+                      active=$branch
+                      branch=`echo "$line" | awk '{print $2}'`
+                  fi
+                  sha=`git --git-dir="$projdir/$proj/.git" rev-parse $branch`
+                  echo "$sha ($active$branch)"
+              done
+        continue
     fi
 
     # fetch branch
@@ -310,14 +416,13 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
 
     # remove old build
     if [ -n "$OPT_REBUILD" ]; then
-        rm -rf "$projdir/$proj/build/"*
+        rm -rf "$projdir/$proj/build/"* || exit $?
     fi
     
     # build repo
     if [[ -n "$OPT_BUILD" || -n "$OPT_REBUILD" ]]; then
         if [ -f "$projdir/$proj/CMakeLists.txt" ]; then
-            pushd $projdir/$proj > /dev/null
-            branch=`git rev-parse --abbrev-ref HEAD`
+            branch=`git --git-dir="$projdir/$proj/.git" rev-parse --abbrev-ref HEAD`
             echo "$ME: building $proj ($branch)..."
             if [ ! -f "$projdir/$proj/build/CMakeCache.txt" ]; then
                 CMAKE_FLAGS="-DCMAKE_BUILD_TYPE=Debug"
@@ -335,16 +440,68 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
             fi
 
             pushd $projdir/$proj/build > /dev/null
-            make -j3 || exit $?
+            if [ -n "$OPT_VERBOSE" ]; then
+                make -j3 VERBOSE=1 || exit $?
+            elif [ -n "$OPT_QUIET" ]; then
+                make -j3 > /dev/null || exit $?
+            else
+                make -j3 || exit $?
+            fi
             if [[ "$proj" = "leatherman" || "$proj" = "cpp-hocon" ]]; then
                 sudo make install > /dev/null || exit $?
             fi
-            popd > /dev/null
             popd > /dev/null
         fi
     fi
 done
 
+#
+# Init puppet-agent build
+#
+for proj in $OPT_JBUILD; do
+    # display available builds
+    if [[ "$proj" = "-" ]]; then
+        wget -qO- builds.puppetlabs.lan/puppet-agent \
+            | grep "^<a href=" \
+            | sed -e "s/<[^>]\+> */ /g" \
+            | awk -F"[ :-/]" '{printf "%s-%s-%s %s:%s %s\n", $5, $4, $6, $7, $8, $2}' \
+            | while read line; do
+                  date=`echo "$line" | awk '{print $1}'`
+                  time=`echo "$line" | awk '{print $2}'`
+                  hash=`echo "$line" | awk '{print $3}'`
+                  echo "`date -d $date +'%m/%d/%Y'` $time $hash"
+              done \
+            | sort -b -k 1.9,1.10 -k 1.1,1.2 -k 1.4,1.5 -k 2.1,2.2 -k 2.4,2.5
+        continue
+    fi
+
+    # determine repo path
+    projbranch=`echo "$proj" | awk -F: '{print $2}'`
+    proj=`echo "$proj" | awk -F: '{print $1}'`
+    if [[ "$proj" = "." ]]; then
+        projdir=`git rev-parse --show-toplevel` || exit 1
+    elif [[ "$proj" =~ ^/.*$ ]]; then
+        projdir="$proj"
+    elif [[ "$proj" =~ ^\./.*$ ]]; then
+        projdir=`echo "$proj" | sed -e 's/^\.\///'`
+        projdir="`realpath .`/$projdir"
+    else
+        projdir="$HOME/proj/$proj"
+    fi
+    proj=`basename "$projdir"`
+    projdir=`dirname "$projdir"`
+    if [[ -z "$projbranch" ]] && [ -d "$projdir/$proj/.git" ]; then
+        projbranch=`git --git-dir="$projdir/$proj/.git" rev-parse --abbrev-ref HEAD`
+    else
+        projbranch="master"
+    fi
+    projsha=`git --git-dir="$projdir/$proj/.git" rev-parse $projbranch`
+    echo "$proj:$projdir:$projbranch:$projsha"
+done
+
+#
+# Install puppet
+#
 if [[ -n "$OPT_PUPPET" && ! -d "/opt/puppetlabs/bin" ]]; then
     if [ -f /etc/os-release ]; then
         for rel in xenial wily vivid utopic trusty precise jessie wheezy; do
