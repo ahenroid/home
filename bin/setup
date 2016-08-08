@@ -328,22 +328,22 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
     if [ -n "$OPT_UPDATE" ]; then
         echo "$ME: updating $proj"
         pushd $projdir/$proj > /dev/null
-        if ! out=`git fetch upstream > /dev/null 2>&1`; then
+        if ! out=`git fetch upstream 2>&1`; then
             echo $out
             exit 1
         fi
         branch=`git rev-parse --abbrev-ref HEAD`
         if [[ "$branch" != "master" ]]; then
-            if ! out=`git checkout master > /dev/null 2>&1`; then
+            if ! out=`git checkout master 2>&1`; then
                 echo $out
                 exit 1
             fi
         fi
-        if ! out=`git merge upstream/master > /dev/null 2>&1`; then
+        if ! out=`git merge upstream/master 2>&1`; then
             echo $out
             exit 1
         fi
-        if ! out=`git push origin master > /dev/null 2>&1`; then
+        if ! out=`git push origin master 2>&1`; then
             echo $out
             exit 1
         fi
@@ -534,16 +534,16 @@ for proj in $OPT_DELETE; do
     echo "$ME: removing $proj ($projbranch)"
     pushd "$projdir/$proj" > /dev/null
     if [[ "$branch" = "$projbranch" ]]; then
-        if ! out=`git checkout master > /dev/null 2>&1`; then
+        if ! out=`git checkout master 2>&1`; then
             echo $out
             exit 1
         fi
     fi
-    if ! out=`git push origin --delete "$projbranch" > /dev/null 2>&1`; then
+    if ! out=`git branch -D "$projbranch" 2>&1`; then
         echo $out
         exit 1
     fi
-    if ! out=`git branch -D "$projbranch" > /dev/null 2>&1`; then
+    if ! out=`git push origin --delete "$projbranch" 2>&1`; then
         echo $out
         exit 1
     fi
