@@ -10,8 +10,10 @@ PUPPET_DEFAULT="agent"
 RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
 CMAKE_DEFAULT="3.6.0"
 GETTEXT_DEFAULT="0.19.8"
-GITHUB_HOME="https://github.com/ahenroid"
+GITHUB_USER="ahenroid"
+GITHUB_HOME="https://github.com/$GITHUB_USER"
 GITHUB_PUPPET="https://github.com/puppetlabs"
+GITHUB_PUPPET2="git://github.com/puppetlabs"
 
 # rehome script if necessary
 BASE=`dirname $0`
@@ -28,52 +30,30 @@ fi
 # Parse command line options
 #
 while true; do
-    VALS=`echo "$1" | awk -F= '{print $2}' | sed -e 's/,/ /g'`
-    case "$1" in
-        -k|--keys|-k-) OPT_KEYS="-" ;;
-        -k=*|--keys=*) OPT_KEYS=$VALS ;;
+    opt=$1
+    val=`echo "$opt" | awk -F= '{print $2}' | sed -e 's/,/ /g'`
+    if [ -n "$val" ]; then
+        opt=`echo "$opt" | awk -F= '{print $1}'`
+    elif [[ "$opt" =~ ^(-[a-z])(.+)$ ]]; then
+        opt=${BASH_REMATCH[1]}
+        val=${BASH_REMATCH[2]}
+    fi
 
-        -r|--ruby) OPT_RUBY=$RUBY_DEFAULT ;;
-        -r-) OPT_RUBY="-" ;;
-        -r=*|--ruby=*) OPT_RUBY=$VALS ;;
-
-        -f|--fetch) OPT_FETCH="." ;;
-        -f-) OPT_FETCH="-" ;;
-        -f\*|-f=\*|--fetch=\*) OPT_FETCH=$BUILD_DEFAULT ;;
-        -f=*|--fetch=*) OPT_FETCH=$VALS ;;
-
-        -b|--build) OPT_BUILD="." ;;
-        -b-) OPT_BUILD="-" ;;
-        -b\*|-b=\*|--build=\*) OPT_BUILD=$BUILD_DEFAULT ;;
-        -b=*|--build=*) OPT_BUILD=$VALS ;;
-
-        -x|--rebuild) OPT_REBUILD="." ;;
-        -x-) OPT_REBUILD="-" ;;
-        -x\*|-x=\*|--rebuild=\*) OPT_REBUILD=$BUILD_DEFAULT ;;
-        -x=*|--rebuild=*) OPT_REBUILD=$VALS ;;
-
-        -u|--update) OPT_UPDATE="." ;;
-        -u-) OPT_UPDATE="-" ;;
-        -u\*|-u=\*|--update=\*) OPT_UPDATE=$BUILD_DEFAULT ;;
-        -u=*|--update=*) OPT_UPDATE=$VALS ;;
-
-        -j|--jbuild) OPT_JBUILD="." ;;
-        -j-) OPT_JBUILD="-" ;;
-        -j=*|--jbuild=*) OPT_JBUILD=$VALS ;;
-
-        -b|--btest) OPT_BTEST="." ;;
-        -b-) OPT_BTEST="-" ;;
-        -b=*|--btest=*) OPT_BTEST=$VALS ;;
-
-        -p|--puppet) OPT_PUPPET=$PUPPET_DEFAULT ;;
-        -p=*|--puppet=*) OPT_PUPPET=$VALS ;;
-
-        -q|--quiet) OPT_QUIET="." ;;
-        -v|--verbose) OPT_VERBOSE="." ;;
-
+    case "$opt" in
+        -k|--keys) OPT_KEYS=${val:-"?"} ;;
+        -r|--ruby) OPT_RUBY=${val:-$RUBY_DEFAULT} ;;
+        -f|--fetch) OPT_FETCH=${val:-"."} ;;
+        -b|--build) OPT_BUILD=${val:-"."} ;;
+        -x|--rebuild) OPT_REBUILD=${val:-"."} ;;
+        -u|--update) OPT_UPDATE=${val:-"."} ;;
+        -j|--jbuild) OPT_JBUILD=${val:-"."} ;;
+        -b|--btest) OPT_BTEST=${val:-"."} ;;
+        -p|--puppet) OPT_PUPPET=${val:-$PUPPET_DEFAULT} ;;
+        -q|--quiet) OPT_QUIET="1" ;;
+        -v|--verbose) OPT_VERBOSE="1" ;;
         -*)
-            if [[ "$1" != "-h" && "$1" != "--help" ]]; then
-                echo "$ME: unrecognized option or format \`$1'"
+            if [[ "$opt" != "-h" && "$opt" != "--help" ]]; then
+                echo "$ME: unrecognized option or format \`$opt'"
             fi
             echo "Usage: $ME [OPTIONS]"
             echo " -k|--keys=USER@HOST:/PATH          Fetch SSH keys"
@@ -88,13 +68,13 @@ while true; do
             echo " -v|--verbose"
             echo " -q|--quiet"
             echo " -h|--help"
-            if [[ "$1" = "-h" || "$1" = "--help" ]]; then
+            if [[ "$opt" = "-h" || "$opt" = "--help" ]]; then
                 echo
                 echo "Examples:"
                 echo "  $ME -k                # show home location"
-                echo "  $ME -r-               # list available ruby versions"
+                echo "  $ME -r?               # list available ruby versions"
                 echo "  $ME -r=2.3.1          # install ruby version"
-                echo "  $ME -f=facter:-       # list facter branches"
+                echo "  $ME -f=facter:?       # list facter branches"
                 echo "  $ME -f=facter:master  # fetch facter master"
                 echo "  $ME -b=facter:master  # build facter master"
                 echo "  $ME -x=facter:master  # rebuild facter master"
@@ -114,7 +94,7 @@ if [[ $EUID -ne 0 ]]; then sudo echo -n; fi
 #
 # Determine remote HOME
 #
-if [[ "$OPT_KEYS" != "-" ]]; then
+if [[ "$OPT_KEYS" != "?" ]]; then
     OPT_HOME=$OPT_KEYS
 fi
 if [ -z "$OPT_HOME" ]; then
@@ -127,7 +107,7 @@ fi
 if [ -z "`echo "$OPT_HOME" | awk -F:/ '{print $2}'`" ]; then
     OPT_HOME="${OPT_HOME}:/Users/`echo \"$OPT_HOME\" | awk -F@ '{print $1}'`"
 fi
-if [[ "$OPT_KEYS" = "-" ]]; then
+if [[ "$OPT_KEYS" = "?" ]]; then
     echo "$OPT_HOME"
     exit 1
 fi
@@ -183,7 +163,7 @@ fi
 #
 for ruby in $OPT_RUBY; do
     # display available versions
-    if [[ "$ruby" = "-" ]]; then
+    if [[ "$ruby" = "?" ]]; then
         if [ -d "$HOME/.rbenv/versions" ]; then
             ver0=`cat "$HOME/.rbenv/version"`
             for ver in `ls "$HOME/.rbenv/versions"`; do
@@ -254,12 +234,12 @@ done
 #
 for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
     # display available projects
-    if [[ "$proj" = "-" || "$proj" = "-:-" ]]; then
+    if [[ "$proj" = "?" || "$proj" = "?:?" ]]; then
         for p in $BUILD_DEFAULT; do
             if [ -d "$HOME/proj/$p/.git" ]; then
                 echo "* $p"
             else
-                echo "  $p"
+                echo "- $p"
             fi
         done
         for p in `ls "$HOME/proj"`; do
@@ -309,17 +289,17 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
     fi
 
     # display available branches
-    if [[ "$projbranch" = "-" ]]; then
+    if [[ "$projbranch" = "?" ]]; then
         git --git-dir="$projdir/$proj/.git" branch \
             | while read line; do
-                  active=""
+                  active=" "
                   branch=`echo "$line" | awk '{print $1}'`
                   if [[ "$branch" = "*" ]]; then
-                      active=$branch
+                      active="*"
                       branch=`echo "$line" | awk '{print $2}'`
                   fi
                   sha=`git --git-dir="$projdir/$proj/.git" rev-parse $branch`
-                  echo "$sha ($active$branch)"
+                  echo "$sha $active($branch)"
               done
         continue
     fi
@@ -415,8 +395,9 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
     fi
 
     # remove old build
-    if [ -n "$OPT_REBUILD" ]; then
-        rm -rf "$projdir/$proj/build/"* || exit $?
+    if [ -n "$OPT_REBUILD" ] && [ -d "$projdir/$proj/build" ]; then
+        rm -rf "$projdir/$proj/build.old" || exit $?
+        mv "$projdir/$proj/build" "$projdir/$proj/build.old" || exit $?
     fi
     
     # build repo
@@ -460,7 +441,7 @@ done
 #
 for proj in $OPT_JBUILD; do
     # display available builds
-    if [[ "$proj" = "-" ]]; then
+    if [[ "$proj" = "?" ]]; then
         wget -qO- builds.puppetlabs.lan/puppet-agent \
             | grep "^<a href=" \
             | sed -e "s/<[^>]\+> */ /g" \
@@ -475,7 +456,7 @@ for proj in $OPT_JBUILD; do
         continue
     fi
 
-    # determine repo path
+    # determine repo details
     projbranch=`echo "$proj" | awk -F: '{print $2}'`
     proj=`echo "$proj" | awk -F: '{print $1}'`
     if [[ "$proj" = "." ]]; then
@@ -495,8 +476,50 @@ for proj in $OPT_JBUILD; do
     else
         projbranch="master"
     fi
-    projsha=`git --git-dir="$projdir/$proj/.git" rev-parse $projbranch`
-    echo "$proj:$projdir:$projbranch:$projsha"
+    sha=`git --git-dir="$projdir/$proj/.git" rev-parse $projbranch` || exit $?
+    ssha=`git --git-dir="$projdir/$proj/.git" rev-parse --short $projbranch` || exit $?
+    echo "$ME: building $proj $ssha ($projbranch)"
+
+    # update puppet-agent
+    agentdir="$HOME/proj/puppet-agent"
+    agentbranch="build-$proj-$ssha"
+    if [ ! -d "$agentdir/.git" ]; then
+        echo "$ME: cannot find puppet-agent"
+        exit 1
+    fi
+    agentcfg="$agentdir/configs/components/$proj.json"
+    if [ ! -f "$agentcfg" ]; then
+        echo "$ME: cannot find puppet-agent/*/$proj.json"
+        exit 1
+    fi
+    pushd "$agentdir" > /dev/null
+    echo "$ME: creating puppet-agent ($agentbranch)"
+    if ! out=`git checkout master 2>&1`; then
+        echo $out
+        exit 1
+    fi
+    git branch -D "$agentbranch" > /dev/null 2>&1
+    if ! out=`git checkout -b "$agentbranch" 2>&1`; then
+        echo $out
+        exit 1
+    fi
+    echo "{\"url\": \"$GITHUB_PUPPET2/$proj.git\", \"ref\": \"$sha\"}" > $agentcfg || exit $?
+    git add $agentcfg > /dev/null 2>&1
+    git commit -m $agentbranch > /dev/null 2>&1
+    if ! out=`git push origin $agentbranch 2>&1`; then
+        if ! out=`git push origin $agentbranch -f 2>&1`; then
+            echo $out
+            exit 1
+        fi
+    fi
+    popd > /dev/null
+    
+    # display instructions
+    echo "URL: https://jenkins.puppetlabs.com/view/puppet-agent/view/ad%20hoc/job/platform_puppet-agent_init-van-int_suite-manual-ad-hoc/build?delay=0sec"
+    echo "TEST_TARGETS:  redhat7-64a windows2012r2-64a"
+    echo "BUILD_TARGETS: ubuntu-14.04-amd64 el-7-x86_64 windows-2012r2-x86"
+    echo "GITHUB_USER:   $GITHUB_USER"
+    echo "GITHUB_REF:    $agentbranch"
 done
 
 #
