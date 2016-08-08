@@ -442,7 +442,12 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
                 make -j3 || exit $?
             fi
             if [[ "$proj" = "leatherman" || "$proj" = "cpp-hocon" ]]; then
-                sudo make install > /dev/null || exit $?
+                echo "$ME: installing $proj ($branch)..."
+                if [ -n "$OPT_VERBOSE" ]; then
+                    sudo make install || exit $?
+                else
+                    sudo make install > /dev/null || exit $?
+                fi
             fi
             popd > /dev/null
         fi
