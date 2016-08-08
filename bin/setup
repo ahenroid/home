@@ -34,7 +34,7 @@ while true; do
     val=`echo "$opt" | awk -F= '{print $2}' | sed -e 's/,/ /g'`
     if [ -n "$val" ]; then
         opt=`echo "$opt" | awk -F= '{print $1}'`
-    elif [[ "$opt" =~ ^(-[a-z])(.+)$ ]]; then
+    elif [[ "$opt" =~ ^(-[a-zA-Z])(.+)$ ]]; then
         opt=${BASH_REMATCH[1]}
         val=${BASH_REMATCH[2]}
     fi
@@ -46,6 +46,7 @@ while true; do
         -b|--build) OPT_BUILD=${val:-"."} ;;
         -x|--rebuild) OPT_REBUILD=${val:-"."} ;;
         -u|--update) OPT_UPDATE=${val:-"."} ;;
+        -D|--delete) OPT_DELETE=${val:-"?"} ;;
         -j|--jbuild) OPT_JBUILD=${val:-"."} ;;
         -b|--btest) OPT_BTEST=${val:-"."} ;;
         -p|--puppet) OPT_PUPPET=${val:-$PUPPET_DEFAULT} ;;
@@ -327,15 +328,27 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
     if [ -n "$OPT_UPDATE" ]; then
         echo "$ME: updating $proj"
         pushd $projdir/$proj > /dev/null
-        git fetch upstream || exit $?
+        if ! out=`git fetch upstream > /dev/null 2>&1`; then
+            echo $out
+            exit 1
+        fi
         branch=`git rev-parse --abbrev-ref HEAD`
         if [[ "$branch" != "master" ]]; then
-            git checkout master || exit $?
+            if ! out=`git checkout master > /dev/null 2>&1`; then
+                echo $out
+                exit 1
+            fi
         fi
-        git merge upstream/master || exit $?
-        git push origin master || exit $?
+        if ! out=`git merge upstream/master > /dev/null 2>&1`; then
+            echo $out
+            exit 1
+        fi
+        if ! out=`git push origin master > /dev/null 2>&1`; then
+            echo $out
+            exit 1
+        fi
         if [[ "$branch" != "master" ]]; then
-            git checkout "$branch"
+            git checkout "$branch" > /dev/null 2>&1
         fi
         popd > /dev/null
     fi
@@ -434,6 +447,102 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
             popd > /dev/null
         fi
     fi
+done
+
+#
+# Delete branches
+#
+for proj in $OPT_DELETE; do
+    # display available projects
+    if [[ "$proj" = "?" || "$proj" = "?:?" ]]; then
+        for p in $BUILD_DEFAULT; do
+            if [ -d "$HOME/proj/$p/.git" ]; then
+                echo "* $p"
+            else
+                echo "- $p"
+            fi
+        done
+        for p in `ls "$HOME/proj"`; do
+            if [ -d "$HOME/proj/$p/.git" ]; then
+                found=""
+                for p2 in $BUILD_DEFAULT; do
+                    if [[ "$p2" = "$p" ]]; then
+                        found="YES"
+                        break
+                    fi
+                done
+                if [ -z "$found" ]; then
+                    echo "+ $p"
+                fi
+            fi
+        done
+        continue
+    fi
+
+    # determine repo path
+    projbranch=`echo "$proj" | awk -F: '{print $2}'`
+    proj=`echo "$proj" | awk -F: '{print $1}'`
+    if [[ "$proj" = "." ]]; then
+        projdir=`git rev-parse --show-toplevel` || exit 1
+    elif [[ "$proj" =~ ^/.*$ ]]; then
+        projdir="$proj"
+    elif [[ "$proj" =~ ^\./.*$ ]]; then
+        projdir=`echo "$proj" | sed -e 's/^\.\///'`
+        projdir="`realpath .`/$projdir"
+    else
+        projdir="$HOME/proj/$proj"
+    fi
+    proj=`basename "$projdir"`
+    projdir=`dirname "$projdir"`
+
+    # display available branches
+    if [[ "$projbranch" = "?" ]]; then
+        if [ -d "$projdir/$proj" ]; then
+            git --git-dir="$projdir/$proj/.git" branch \
+                | while read line; do
+                      active=" "
+                      branch=`echo "$line" | awk '{print $1}'`
+                      if [[ "$branch" = "*" ]]; then
+                          active="*"
+                          branch=`echo "$line" | awk '{print $2}'`
+                      fi
+                      sha=`git --git-dir="$projdir/$proj/.git" rev-parse $branch`
+                      echo "$sha $active($branch)"
+                  done
+        fi
+        continue
+    fi
+
+    # check repo and branch
+    if [ ! -d "$projdir/$proj/.git" ]; then
+        echo "$ME: invalid repo \`$projdir/$proj'"
+        exit 1
+    fi
+    branch=`git --git-dir="$projdir/$proj/.git" rev-parse --abbrev-ref HEAD`
+    if [[ -z "$projbranch" ]]; then projbranch=$branch; fi
+    if [[ "$projbranch" = "master" ]]; then
+        echo "$ME: cannot delete master"
+        exit 1
+    fi
+
+    # remove branch
+    echo "$ME: removing $proj ($projbranch)"
+    pushd "$projdir/$proj" > /dev/null
+    if [[ "$branch" = "$projbranch" ]]; then
+        if ! out=`git checkout master > /dev/null 2>&1`; then
+            echo $out
+            exit 1
+        fi
+    fi
+    if ! out=`git push origin --delete "$projbranch" > /dev/null 2>&1`; then
+        echo $out
+        exit 1
+    fi
+    if ! out=`git branch -D "$projbranch" > /dev/null 2>&1`; then
+        echo $out
+        exit 1
+    fi
+    popd > /dev/null
 done
 
 #
