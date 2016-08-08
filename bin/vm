@@ -28,6 +28,7 @@ case "$1" in
 	    echo "alias $x='cd \"$VMDIR/$x\"; vagrant ssh'"
 	done
         echo "alias deb=debian8"
+        echo "alias pup=puppet-student"
         ;;
     "")
 	echo "VMs:"
