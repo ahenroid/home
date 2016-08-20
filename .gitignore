@@ -7,6 +7,7 @@
 !.screenrc
 !/bin/
 !/bin/*
+/bin/rxstrings
 !/doc/
 !/doc/*
 
