@@ -326,29 +326,32 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
 
     # update repo
     if [ -n "$OPT_UPDATE" ]; then
-        echo "$ME: updating $proj"
         pushd $projdir/$proj > /dev/null
-        if ! out=`git fetch upstream 2>&1`; then
-            echo $out
-            exit 1
-        fi
-        branch=`git rev-parse --abbrev-ref HEAD`
-        if [[ "$branch" != "master" ]]; then
-            if ! out=`git checkout master 2>&1`; then
+        branch0=`git rev-parse --abbrev-ref HEAD`
+        for branch in master stable; do
+            echo "$ME: updating $proj ($branch)"
+            if ! out=`git fetch upstream $branch 2>&1`; then
+                echo $out
+                continue
+            fi
+            if [[ "`git rev-parse --abbrev-ref HEAD`" != "$branch" ]]; then
+                if ! out=`git checkout $branch 2>&1`; then
+                    if ! out=`git checkout -b $branch origin/$branch 2>&1`; then
+                        echo $out
+                        exit 1
+                    fi
+                fi
+            fi
+            if ! git merge upstream/$branch 2>&1; then
+                exit 1
+            fi
+            if ! out=`git push origin $branch 2>&1`; then
                 echo $out
                 exit 1
             fi
-        fi
-        if ! out=`git merge upstream/master 2>&1`; then
-            echo $out
-            exit 1
-        fi
-        if ! out=`git push origin master 2>&1`; then
-            echo $out
-            exit 1
-        fi
-        if [[ "$branch" != "master" ]]; then
-            git checkout "$branch" > /dev/null 2>&1
+        done
+        if [[ "`git rev-parse --abbrev-ref HEAD`" != "$branch0" ]]; then
+            git checkout "$branch0" > /dev/null 2>&1
         fi
         popd > /dev/null
     fi
