@@ -8,6 +8,7 @@ HOME_DEFAULT="andy.henroid@ahenroid.corp.puppetlabs.net:/Users/andy.henroid"
 BUILD_DEFAULT="leatherman cpp-hocon facter puppet puppet-agent hiera"
 PUPPET_DEFAULT="agent"
 RUBY_DEFAULT="2.3.1 2.2.5 2.1.10"
+CMAKE_MIN="3.2.2"
 CMAKE_DEFAULT="3.6.0"
 GETTEXT_DEFAULT="0.19.8"
 GITHUB_USER="ahenroid"
@@ -90,7 +91,7 @@ while true; do
 done
 
 # check sudo permission
-if [[ $EUID -ne 0 ]]; then sudo echo -n; fi
+if [[ $EUID -ne 0 && -x /usr/bin/sudo ]]; then sudo echo -n; fi
 
 #
 # Determine remote HOME
@@ -134,6 +135,8 @@ if [ -f /etc/redhat-release ]; then
     else
         PKGMGR="yum -q -y"
     fi
+elif which choco 2>&1 > /dev/null; then
+    PKGMGR="choco"
 fi
 
 #
@@ -141,21 +144,28 @@ fi
 #
 if [ -z "$OPTS" ]; then
     echo -n "$ME: checking installed packages..."
-    if [ -f /etc/redhat-release ]; then
-        # Fedora, Redhat
-        PKG+="gcc-c++ git wget"
-        PKG+=" openssl-devel readline-devel zlib-devel"
-        PKG+=" boost-devel libcurl-devel yaml-cpp-devel"
-        PKG+=" emacs-nox gdb valgrind screen"
+    if [[ "$PKGMGR" != "choco" ]]; then
+        if [ -f /etc/redhat-release ]; then
+            # Fedora, Redhat
+            PKG+="gcc-c++ git wget"
+            PKG+=" openssl-devel readline-devel zlib-devel"
+            PKG+=" boost-devel libcurl-devel yaml-cpp-devel"
+            PKG+=" emacs-nox gdb valgrind screen"
+        else
+            # Debian, Ubuntu
+            PKG+="build-essential git wget"
+            PKG+=" libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev"
+            PKG+=" libcurl4-openssl-dev ruby-dev libreadline-dev"
+            PKG+=" emacs-nox gdb valgrind screen"
+        fi
+        sudo $PKGMGR update > /dev/null
+        sudo $PKGMGR install $PKG > /dev/null
     else
-        # Debian, Ubuntu
-        PKG+="build-essential git wget"
-        PKG+=" libboost-all-dev libssl-dev libyaml-dev libyaml-cpp-dev"
-        PKG+=" libcurl4-openssl-dev ruby-dev libreadline-dev"
-        PKG+=" emacs-nox gdb valgrind screen"
+        PKG+="cmake mingw-w64"
+        PKG+=" pl-boost-x64 pl-toolchain-x64 pl-zlib-x64"
+        PKG+=" pl-openssl-x64 pl-curl-x64 pl-yaml-cpp-x64"
+        #choco install -source https://www.myget.org/F/puppetlabs -y $PKG
     fi
-    sudo $PKGMGR update > /dev/null
-    sudo $PKGMGR install $PKG > /dev/null
     echo
 fi
 
@@ -363,7 +373,7 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
         if [ -x "$CMAKE_EXE" ]; then
             CMAKE_NOW=`${CMAKE_EXE} --version 2>/dev/null | awk '/ version / {print $3}'`
         fi
-        if [[ "${CMAKE_NOW}" < "${CMAKE_DEFAULT}" ]]; then
+        if [[ "${CMAKE_NOW}" < "${CMAKE_MIN}" ]]; then
             if [ ! -d "$HOME/proj/cmake" ]; then mkdir -p "$HOME/proj/cmake"; fi
             CMAKE_DIR="cmake-${CMAKE_DEFAULT}-`uname -s`-`uname -m`"
             CMAKE_DIR=`echo ${CMAKE_DIR} | sed -e 's/i686/i386/'`
@@ -430,26 +440,52 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
                     CMAKE_FLAGS+=" -DYAMLCPP_LIBRARY=/opt/pl-build-tools/lib/libyaml-cpp.so"
                     CMAKE_FLAGS+=" -DYAMLCPP_INCLUDE_DIR=/opt/pl-build-tools/include/yaml-cpp"
                 fi
+
+                if [ -d /cygdrive/c/tools/pl-build-tools ]; then
+                    CMAKE_FLAGS+=' -DCMAKE_INSTALL_PREFIX=C:\tools\pl-build-tools'
+                    CMAKE_FLAGS+=' -DCMAKE_TOOLCHAIN_FILE=C:\tools\pl-build-tools\pl-build-toolchain.cmake'
+                    CMAKE_FLAGS+=' -DCMAKE_MAKE_PROGRAM=mingw32-make'
+                    CMAKE_FLAGS+=' -DBOOST_STATIC=ON'
+                fi
+
                 mkdir -p $projdir/$proj/build || exit $?
                 pushd $projdir/$proj/build > /dev/null
-                cmake ${CMAKE_FLAGS} .. > /dev/null || exit $?
+                if [ -d /cygdrive/c/tools/pl-build-tools ]; then
+                    echo '@echo off' > .cmake.bat
+                    echo 'set PATH=c:\Windows\system32' >> .cmake.bat
+                    echo 'set PATH=c:\ProgramData\chocolatey\bin;%PATH%' >> .cmake.bat
+                    echo 'set PATH=c:\tools\mingw64\bin;%PATH%' >> .cmake.bat
+                    echo 'set PATH=c:\tools\pl-build-tools\bin;%PATH%' >> .cmake.bat
+                    echo "cmake -G \"MinGW Makefiles\" ${CMAKE_FLAGS} .." >> .cmake.bat
+                    chmod 755 .cmake.bat
+                    ./.cmake.bat
+                else
+                    cmake ${CMAKE_FLAGS} .. > /dev/null || exit $?
+                fi
                 popd > /dev/null
+            fi
+
+            MAKE=make
+            INSTALL="sudo make install"
+            if [ -d /cygdrive/c/tools/pl-build-tools ]; then
+                MAKE=mingw32-make
+                INSTALL="${MAKE} install"
             fi
 
             pushd $projdir/$proj/build > /dev/null
             if [ -n "$OPT_VERBOSE" ]; then
-                make -j3 VERBOSE=1 || exit $?
+                ${MAKE} -j3 VERBOSE=1 || exit $?
             elif [ -n "$OPT_QUIET" ]; then
-                make -j3 > /dev/null || exit $?
+                ${MAKE} -j3 > /dev/null || exit $?
             else
-                make -j3 || exit $?
+                ${MAKE} -j3 || exit $?
             fi
             if [[ "$proj" = "leatherman" || "$proj" = "cpp-hocon" ]]; then
                 echo "$ME: installing $proj ($branch)..."
                 if [ -n "$OPT_VERBOSE" ]; then
-                    sudo make install || exit $?
+                    ${INSTALL} || exit $?
                 else
-                    sudo make install > /dev/null || exit $?
+                    ${INSTALL} > /dev/null || exit $?
                 fi
             fi
             popd > /dev/null
