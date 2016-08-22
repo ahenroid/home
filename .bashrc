@@ -2,6 +2,9 @@
 
 # Env variables
 export EDITOR=emacs
+if [ -d "/emacs-24.3/bin" ]; then
+  export PATH="/emacs-24.3/bin:$PATH"
+fi
 if [ -d "$HOME/bin" ]; then
   export PATH="$HOME/bin:$PATH"
 fi
