@@ -454,6 +454,7 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
                     echo '@echo off' > .cmake.bat
                     echo 'set PATH=c:\Windows\system32' >> .cmake.bat
                     echo 'set PATH=c:\ProgramData\chocolatey\bin;%PATH%' >> .cmake.bat
+                    echo 'set PATH=c:\progra~1\gettext-iconv;%PATH%' >> .cmake.bat
                     echo 'set PATH=c:\tools\mingw64\bin;%PATH%' >> .cmake.bat
                     echo 'set PATH=c:\tools\pl-build-tools\bin;%PATH%' >> .cmake.bat
                     echo "cmake -G \"MinGW Makefiles\" ${CMAKE_FLAGS} .." >> .cmake.bat
