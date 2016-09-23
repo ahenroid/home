@@ -338,7 +338,7 @@ for proj in $OPT_FETCH $OPT_BUILD $OPT_REBUILD $OPT_UPDATE; do
     if [ -n "$OPT_UPDATE" ]; then
         pushd $projdir/$proj > /dev/null
         branch0=`git rev-parse --abbrev-ref HEAD`
-        for branch in master stable; do
+        for branch in master; do
             echo "$ME: updating $proj ($branch)"
             if ! out=`git fetch upstream $branch 2>&1`; then
                 echo $out
