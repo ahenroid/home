@@ -8,6 +8,7 @@
 !/bin/
 !/bin/*
 /bin/rxstrings
+/bin/packer
 !/doc/
 !/doc/*
 
